@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#ffdc00" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Спасибо — AskHow</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f6f6f6;
+        color: #111;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      }
+      .card {
+        width: min(100%, 620px);
+        padding: 44px 34px;
+        border: 1px solid #ececec;
+        border-radius: 28px;
+        background: #fff;
+        box-shadow: 0 24px 70px rgba(0,0,0,.08);
+        text-align: center;
+      }
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 112px;
+        height: 42px;
+        padding: 0 20px;
+        border-radius: 999px;
+        background: #ffdc00;
+        font-size: 19px;
+        font-weight: 900;
+        letter-spacing: -1px;
+      }
+      h1 {
+        margin: 28px 0 0;
+        font-size: clamp(30px, 6vw, 48px);
+        line-height: 1.04;
+        letter-spacing: -.035em;
+      }
+      p {
+        margin: 18px auto 0;
+        max-width: 470px;
+        font-size: 16px;
+        line-height: 1.55;
+        color: #555;
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 52px;
+        margin-top: 30px;
+        padding: 0 26px;
+        border-radius: 999px;
+        background: #ffdc00;
+        color: #111;
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform .18s ease, box-shadow .18s ease;
+        box-shadow: 0 10px 26px rgba(255,220,0,.28);
+      }
+      .button:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(255,220,0,.35); }
+      .social-links {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px 18px;
+        margin: 18px auto 0;
+      }
+      .social-links a {
+        color: #555;
+        font-size: 13px;
+        text-underline-offset: 3px;
+      }
+      @media (max-width: 520px) {
+        body { padding: 14px; }
+        .card { padding: 36px 20px; border-radius: 22px; }
+      }
+    </style>
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+      (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+      })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+
+      ym(112288061, 'init', {
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true
+      });
+    </script>
+    <!-- /Yandex.Metrika counter -->
+  </head>
+  <body>
+    <noscript><div><img src="https://mc.yandex.ru/watch/112288061" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <main class="card">
+      <div class="logo">AskHow</div>
+      <h1 id="thanks-title">Спасибо!</h1>
+      <p id="thanks-copy">Оплата прошла успешно. Мы отправим информацию о доступе на e-mail, указанный перед оплатой.</p>
+      <a class="button" href="https://catalog.askhow.ru/">Вернуться в каталог</a>
+      <div class="social-links">
+        <a href="https://t.me/+J1XU4RVIVQM1NjBi" target="_blank" rel="noopener noreferrer">Наш канал в Telegram</a>
+        <a href="https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc" target="_blank" rel="noopener noreferrer">Открыть AskHow в MAX</a>
+      </div>
+    </main>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        if (typeof window.ym === 'function') {
+          window.ym(112288061, 'reachGoal', 'payment_success');
+        }
+
+        // Tell the backend which lead just paid, so it can mark it paid in the
+        // admin panel and send the client a thank-you email. Best-effort: a
+        // failure here should never block the "thank you" page from showing.
+        var email = params.get('email');
+        var courseId = params.get('course_id');
+        if (email && courseId) {
+          fetch('/mail-api/lead/paid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, course_id: courseId }),
+          }).catch(function () {});
+        }
+      })();
+    </script>
+  </body>
+</html>

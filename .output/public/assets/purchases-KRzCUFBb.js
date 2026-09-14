@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-DGeXAQPT.js";import{s as t}from"./index-BJz62K4D.js";var n=e(),r=()=>(0,n.jsx)(t,{title:`Покупки`});export{r as component};

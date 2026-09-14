@@ -1,0 +1,60 @@
+# Mail lead server
+
+Небольшой отдельный сервис (без внешних веб-фреймворков) для отправки заявок
+с сайта на почту через SMTP. Не зависит от `tg-leads-backend-v2` и его связи
+с Telegram — используется как самостоятельный или резервный канал приёма
+лидов.
+
+Контракт запроса такой же, как у `/tg-api/lead` в `tg-leads-backend-v2`:
+`POST` с JSON-телом `{ name, email, course_id, course_title, price, currency,
+source, page_url, form_id, form_name, time, idempotency_key }` и заголовком
+`Idempotency-Key`.
+
+## Запуск локально
+
+1. Скопировать `server/.env.example` в `server/.env` и заполнить:
+   - `SMTP_*` — данные почтового сервера (см. пример для Yandex).
+   - `MAIL_FROM` / `MAIL_TO` — от кого и куда слать письма с заявками.
+   - `ALLOWED_ORIGINS` — список разрешённых источников через запятую
+     (например, `https://catalog.askhow.ru`).
+   - `MAIL_API_KEY` — необязательный ключ; если задан, запросы должны
+     приходить с заголовком `X-API-Key`, равным этому значению (обычно его
+     подставляет nginx на проксировании, как это уже сделано для
+     `tg-leads-backend-v2`).
+2. Установить зависимости (один раз): `npm install`.
+3. Запустить: `npm run mail-server`.
+
+Сервис поднимется на порту `MAIL_PORT` (по умолчанию `3020`) и слушает:
+- `GET /health` — проверка работоспособности.
+- `POST <MAIL_ENDPOINT_PATH>` (по умолчанию `/api/lead`) — приём заявки.
+
+## Деплой на сервере (аналогично tg-leads-backend-v2)
+
+Проще всего запускать через `pm2` или `systemd`, аналогично существующему
+боту:
+
+```bash
+cd /path/to/repo
+npm ci --omit=dev
+npm install --omit=dev  # если nodemailer не попал в prod-зависимости
+pm2 start server/mail-server.js --name mail-server --node-args="--env-file=server/.env"
+pm2 save
+```
+
+Дальше добавить в nginx location, проксирующий на `127.0.0.1:<MAIL_PORT>`,
+по образцу `/etc/nginx/voron/tg-leads.conf` — с той же CORS-логикой
+(`Access-Control-Allow-*`) и обработкой `OPTIONS`.
+
+## Подключение фронтенда
+
+Чтобы фронт слал заявки именно на этот сервис вместо/вместе с
+`tg-leads-backend-v2`, укажите в `.env` фронтенда:
+
+```
+VITE_LEAD_ENDPOINT=https://catalog.askhow.ru/mail-api/lead
+```
+
+(или любой путь, который вы настроите в nginx на проксирование к этому
+сервису). Менять код фронтенда не нужно — `savePaymentLead` в
+`src/utils/payment.js` уже отправляет ровно тот payload, который здесь
+ожидается.

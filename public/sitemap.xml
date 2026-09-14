@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://app.askhow.ru/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://app.askhow.ru/catalog</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://app.askhow.ru/authors</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/blogs</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/blogs/travel-checklist</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/igor-malinin</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/pavel-semenov</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/artem-mushin</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/yulia-volkova</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/alexandra-nikitina</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/konstantin-kharsky</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/alexey-markov</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/igor-veretennikov</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/author/darya-filimonova</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/brand-publicity-media-reputation</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/business-hypotheses-intro</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/strategic-storytelling-interviews</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/tax-system-selection</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/selling-resume</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/buyer-states-sales</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/effective-self-presentation</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/breathing-and-voice</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/voice-resonators</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/easy-finance-management</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/word-of-mouth-promotion</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://app.askhow.ru/catalog/course/buyer-states-sales-alt</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+</urlset>

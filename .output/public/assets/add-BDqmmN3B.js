@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-DGeXAQPT.js";import{s as t}from"./index-DCy8plgK.js";var n=e(),r=()=>(0,n.jsx)(t,{title:`Добавить видео/курс`});export{r as component};
