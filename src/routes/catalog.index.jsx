@@ -41,7 +41,7 @@ export const Route = createFileRoute('/catalog/')({
       meta: [
         { title: TITLE },
         { name: 'description', content: DESCRIPTION },
-        { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1' },
+        { name: 'robots', content: 'noindex, nofollow' },
         {
           name: 'keywords',
           content: 'онлайн-курсы, обучение, бизнес, карьера, продажи, маркетинг, финансы, AskHow',

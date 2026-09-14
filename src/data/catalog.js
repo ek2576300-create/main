@@ -509,7 +509,7 @@ function createCourse({
       description: shortDescription(description),
       canonical,
       image: cover.startsWith('http') ? cover : `${SITE_URL}${cover}`,
-      robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+      robots: 'noindex, nofollow',
       keywords: [
         ...new Set([
           title,
@@ -793,7 +793,7 @@ export const authors = authorsBase.map((author) => {
       description: shortDescription(`${author.description} Курсы автора на платформе AskHow.`),
       canonical,
       image,
-      robots: 'index, follow, max-image-preview:large, max-snippet:-1',
+      robots: 'noindex, nofollow',
       keywords: [
         ...new Set([
           author.name,

@@ -380,7 +380,7 @@ export const courses = authors.map((author) => ({
     image: author.course.cover.startsWith('http')
       ? author.course.cover
       : `https://app.askhow.ru${author.course.cover}`,
-    robots: 'index, follow',
+    robots: 'noindex, nofollow',
     keywords: [author.course.title, author.name, author.role, 'онлайн-курс', 'AskHow'],
   },
 }));

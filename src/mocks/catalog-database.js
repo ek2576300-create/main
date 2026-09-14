@@ -182,7 +182,7 @@ function createCourse({ id, sourceCourseId = null, sourceUrl = null, sourceWarni
     duration, lessons, materials, progress, likes: null, saves: null,
     seo: {
       title: `${title} — ${authorName} | AskHow`, description: shortDescription(description), canonical,
-      image: cover.startsWith('http') ? cover : `${SITE_URL}${cover}`, robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+      image: cover.startsWith('http') ? cover : `${SITE_URL}${cover}`, robots: 'noindex, nofollow',
       keywords: [...new Set([title, authorName, ...keywords, ...tags.map((tag) => tag.replace(/^#/, '')), 'онлайн-курс', 'AskHow'])],
     },
   };
@@ -286,7 +286,7 @@ export const authors = authorsBase.map((author) => {
     seo: {
       title: `${author.name} — курсы автора | AskHow`,
       description: shortDescription(`${author.description} Курсы автора на платформе AskHow.`),
-      canonical, image, robots: 'index, follow, max-image-preview:large, max-snippet:-1',
+      canonical, image, robots: 'noindex, nofollow',
       keywords: [...new Set([author.name, author.role, ...author.tags.map((tag) => tag.replace(/^#/, '')), 'автор AskHow'])],
     },
     content: { courses: authorCourses, videos: [], articles: [] },
