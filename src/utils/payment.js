@@ -71,9 +71,12 @@ function getUnlockKey(courseId) {
   return `askhow-unlocked:${courseId}`;
 }
 
+// Unlock state lives in localStorage (not sessionStorage) so a visitor who
+// filled the form once on this device stays unlocked — and keeps seeing the
+// "next lesson" button — across browser restarts, not just the current tab.
 export function isCourseUnlocked(courseId) {
   try {
-    return sessionStorage.getItem(getUnlockKey(courseId)) === '1';
+    return localStorage.getItem(getUnlockKey(courseId)) === '1';
   } catch {
     return false;
   }
@@ -81,9 +84,9 @@ export function isCourseUnlocked(courseId) {
 
 function markCourseUnlocked(courseId) {
   try {
-    sessionStorage.setItem(getUnlockKey(courseId), '1');
+    localStorage.setItem(getUnlockKey(courseId), '1');
   } catch {
-    // sessionStorage may be unavailable in privacy mode; the visitor just re-fills the form.
+    // localStorage may be unavailable in privacy mode; the visitor just re-fills the form.
   }
 }
 
@@ -92,11 +95,11 @@ export async function savePaymentLead({ course, name, email, source = 'catalog',
 
   if (!allowResubmit) {
     try {
-      if (sessionStorage.getItem(leadKey) === 'saved') {
+      if (localStorage.getItem(leadKey) === 'saved') {
         return { ok: true, duplicate: true };
       }
     } catch {
-      // sessionStorage may be unavailable in privacy mode; server idempotency still applies.
+      // localStorage may be unavailable in privacy mode; server idempotency still applies.
     }
   }
 
@@ -138,7 +141,7 @@ export async function savePaymentLead({ course, name, email, source = 'catalog',
   }
 
   try {
-    sessionStorage.setItem(leadKey, 'saved');
+    localStorage.setItem(leadKey, 'saved');
   } catch {
     // The successful server response is authoritative.
   }

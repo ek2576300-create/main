@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useAppContext } from '../app/AppContext';
 import { AuthorButton } from '../components/catalog/AuthorButton';
 import { LessonCard } from '../components/catalog/LessonCard';
 import { PurchaseCta } from '../components/catalog/PurchaseCta';
@@ -52,6 +53,12 @@ function PreviewPoster({ course, lesson, onOpen }) {
 function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext, unlocked }) {
   const videoRef = useRef(null);
   const seekingRef = useRef(false);
+  // Some mobile browsers defer fetching even `preload="metadata"` until the
+  // page has real user interaction, so `video.duration` can still be NaN the
+  // moment someone drags the seek bar. Remember the requested position and
+  // apply it once metadata actually arrives, instead of silently no-op'ing.
+  const pendingSeekRef = useRef(null);
+  const metadataKickedRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -71,6 +78,9 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
   return (
     <article className="group relative aspect-[512/1000] w-full overflow-hidden rounded-[26px] bg-[#1b1b1b] shadow-[0_18px_48px_rgba(0,0,0,.16)]">
       <style>{`
+        .askhow-video-progress {
+          -webkit-touch-callout: none;
+        }
         .askhow-video-progress::-webkit-slider-runnable-track {
           height: 5px;
           border-radius: 9999px;
@@ -128,6 +138,14 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
           onPlay();
         }}
         onPause={() => setPlaying(false)}
+        onLoadedMetadata={(event) => {
+          if (pendingSeekRef.current == null) return;
+          const video = event.currentTarget;
+          if (Number.isFinite(video.duration) && video.duration > 0) {
+            video.currentTime = Math.min(pendingSeekRef.current * video.duration, Math.max(video.duration - 0.05, 0));
+          }
+          pendingSeekRef.current = null;
+        }}
         onTimeUpdate={(event) => {
           if (seekingRef.current) return;
           const { currentTime, duration } = event.currentTarget;
@@ -162,12 +180,23 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
             const nextProgress = Number(event.currentTarget.value) / 1000;
             setProgress(nextProgress);
             const video = videoRef.current;
-            if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-            video.currentTime = Math.min(nextProgress * video.duration, Math.max(video.duration - 0.05, 0));
+            if (video && Number.isFinite(video.duration) && video.duration > 0) {
+              video.currentTime = Math.min(nextProgress * video.duration, Math.max(video.duration - 0.05, 0));
+              pendingSeekRef.current = null;
+              return;
+            }
+            // Duration isn't known yet — remember the target and, if the
+            // browser never started fetching the file, kick it off once so
+            // metadata actually arrives (a common mobile data-saver quirk).
+            pendingSeekRef.current = nextProgress;
+            if (video && !metadataKickedRef.current && video.readyState === 0) {
+              metadataKickedRef.current = true;
+              video.load();
+            }
           }}
           aria-label="Прогресс просмотра видео"
-          className="askhow-video-progress h-[18px] w-full cursor-pointer appearance-none bg-transparent"
-          style={{ '--video-progress': `${progress * 100}%`, touchAction: 'none' }}
+          className="askhow-video-progress h-[18px] w-full cursor-pointer touch-none select-none appearance-none bg-transparent"
+          style={{ '--video-progress': `${progress * 100}%` }}
         />
       </div>
 
@@ -397,8 +426,12 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   const previewLesson = lessons.find((lesson) => lesson.featured) || lessons[0] || null;
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) || previewLesson;
   const activeLessonIndex = activeLesson ? lessons.findIndex((lesson) => lesson.id === activeLesson.id) : -1;
-  const nextLesson = activeLessonIndex >= 0 ? lessons[activeLessonIndex + 1] : null;
+  // Only a lesson with an actual video is a valid "next lesson" — most of the
+  // catalog only ships one preview video per course today, so this correctly
+  // hides the button until there is really something else to switch to.
+  const nextLesson = activeLessonIndex >= 0 ? lessons.slice(activeLessonIndex + 1).find((lesson) => lesson.video) || null : null;
   const visibleLessons = lessonsExpanded ? lessons : lessons.slice(0, 6);
+  const { setCourseCta } = useAppContext();
 
   useEffect(() => {
     setPaymentOpen(false);
@@ -485,14 +518,11 @@ export function CoursePage({ course, author, onOpenAuthor }) {
 
   const goToNextLesson = () => {
     if (!nextLesson) return;
+    // The lesson is already unlocked (this button only shows once it is), so
+    // this just switches the player — never the lead/payment form.
     trackEvent('next_lesson_click', { course_id: course.id, lesson_id: nextLesson.id });
-    if (nextLesson.video) {
-      setActiveLessonId(nextLesson.id);
-      openPreview();
-      return;
-    }
-    if (lessons.length > 6 && lessons.indexOf(nextLesson) >= 6) setLessonsExpanded(true);
-    openLesson(nextLesson);
+    setActiveLessonId(nextLesson.id);
+    openPreview();
   };
 
   const handlePreviewPlay = () => {
@@ -506,6 +536,17 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     trackEvent('preview_complete', { course_id: course.id, lesson_id: activeLesson.id });
     setPurchaseCtaOpen(true);
   };
+
+  // The site footer is rendered once by AppShell for every page, so the
+  // course page publishes its own CTA into shared context instead of the
+  // footer hard-coding a course-agnostic button.
+  useEffect(() => {
+    setCourseCta({
+      label: getPaymentLabel(course, false, leadCaptured),
+      onClick: () => (isFreeCourse ? openFreeAccess('site_footer') : openPayment('site_footer')),
+    });
+    return () => setCourseCta(null);
+  }, [course.id, course.price, course.title, isFreeCourse, leadCaptured, setCourseCta]);
 
   return (
     <main className="px-3 pb-12 min-[380px]:px-4 sm:px-5 lg:ml-[190px] lg:px-[28px]">

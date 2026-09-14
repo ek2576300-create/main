@@ -18,9 +18,10 @@ export function AppShell({ children }) {
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [courseCta, setCourseCta] = useState(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeSection = getActiveSection(pathname);
-  const contextValue = useMemo(() => ({ query, setQuery }), [query]);
+  const contextValue = useMemo(() => ({ query, setQuery, courseCta, setCourseCta }), [query, courseCta]);
 
   useEffect(() => {
     if (!menuOpen && !mobileSearchOpen) return undefined;

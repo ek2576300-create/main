@@ -1,3 +1,4 @@
+import { useAppContext } from '../../app/AppContext';
 import { CookieConsent } from './CookieConsent';
 
 const BANK_SERVICES = [
@@ -26,6 +27,8 @@ function CardBadges() {
 }
 
 export function SiteFooter() {
+  const { courseCta } = useAppContext();
+
   return (
     <footer className="footer-motion border-t border-[#f0f0f0] bg-white px-3 pb-8 pt-9 min-[380px]:px-4 sm:px-5 sm:pt-10 lg:ml-[190px] lg:px-[28px]">
       <div className="mx-auto max-w-[1050px]">
@@ -98,7 +101,13 @@ export function SiteFooter() {
             <a href="#contacts" className="mt-8 block text-[9px]">Контакты</a>
           </div>
           <div className="flex flex-col items-start sm:col-span-2 lg:col-span-1 lg:items-end">
-            <button type="button" className="h-11 w-full min-[390px]:w-auto min-[390px]:min-w-[190px] rounded-full bg-[#ffdc00] px-7 text-[10px] font-medium">Оставить заявку</button>
+            <button
+              type="button"
+              onClick={courseCta ? courseCta.onClick : undefined}
+              className="pay-button-motion h-11 w-full min-[390px]:w-auto min-[390px]:min-w-[190px] rounded-full bg-[#ffdc00] px-7 text-[10px] font-medium"
+            >
+              {courseCta ? courseCta.label : 'Оставить заявку'}
+            </button>
             <div className="mt-8 flex w-full flex-wrap items-start justify-between gap-6 lg:justify-end">
               <div className="max-w-[190px] text-left">
                 <p className="text-[8px] leading-[1.5] text-[#999]">
