@@ -1,13 +1,13 @@
 const MONETA_ASSISTANT_URL = 'https://www.payanyway.ru/assistant.htm';
 const MONETA_SUCCESS_URL = 'https://catalog.askhow.ru/thanks.html';
-const MONETA_FAIL_URL = 'https://catalog.askhow.ru/payment-error.html';
+const MONETA_FAIL_BASE_URL = 'https://catalog.askhow.ru/catalog/course';
 const LEAD_ENDPOINT = import.meta.env.VITE_LEAD_ENDPOINT || '/mail-api/lead';
 
-export function getPaymentLabel(course, compact = false) {
+export function getPaymentLabel(course, compact = false, unlocked = false) {
   if (course.price && course.price !== 'Бесплатно') {
     return compact ? `Оплатить · ${course.price}` : `Оплатить курс · ${course.price}`;
   }
-  return 'Получить доступ';
+  return unlocked ? 'Получить рассылку' : 'Получить доступ';
 }
 
 function createTransactionId(courseId) {
@@ -26,6 +26,12 @@ export function submitMonetaPayment(course, { email } = {}) {
   successUrl.searchParams.set('course_id', course.id);
   if (email) successUrl.searchParams.set('email', email.trim().toLowerCase());
 
+  // Failed/cancelled payments send the visitor back to the course page itself
+  // (not a standalone page) so CoursePage can close the payment form and show
+  // the "payment failed" modal in place.
+  const failUrl = new URL(`${MONETA_FAIL_BASE_URL}/${course.id}`);
+  failUrl.searchParams.set('payment', 'failed');
+
   const fields = {
     MNT_ID: payment.merchantId,
     MNT_TRANSACTION_ID: createTransactionId(course.id),
@@ -36,7 +42,7 @@ export function submitMonetaPayment(course, { email } = {}) {
     MNT_CUSTOM2: course.id,
     MNT_TEST_MODE: '0',
     MNT_SUCCESS_URL: successUrl.toString(),
-    MNT_FAIL_URL: MONETA_FAIL_URL,
+    MNT_FAIL_URL: failUrl.toString(),
   };
 
   const form = document.createElement('form');
@@ -81,18 +87,26 @@ function markCourseUnlocked(courseId) {
   }
 }
 
-export async function savePaymentLead({ course, name, email, source = 'catalog' }) {
+export async function savePaymentLead({ course, name, email, source = 'catalog', allowResubmit = false }) {
   const leadKey = getLeadKey(course.id, email);
 
-  try {
-    if (sessionStorage.getItem(leadKey) === 'saved') {
-      return { ok: true, duplicate: true };
+  if (!allowResubmit) {
+    try {
+      if (sessionStorage.getItem(leadKey) === 'saved') {
+        return { ok: true, duplicate: true };
+      }
+    } catch {
+      // sessionStorage may be unavailable in privacy mode; server idempotency still applies.
     }
-  } catch {
-    // sessionStorage may be unavailable in privacy mode; server idempotency still applies.
   }
 
-  const idempotencyKey = `${course.id}:${email.trim().toLowerCase()}`;
+  // A resubmission (e.g. the "Получить рассылку" form shown to visitors who
+  // already unlocked the course) is a deliberate new lead, not a retry of the
+  // same request — give it its own idempotency key so the server doesn't
+  // collapse it into the original submission.
+  const idempotencyKey = allowResubmit
+    ? `${course.id}:${email.trim().toLowerCase()}:${Date.now()}`
+    : `${course.id}:${email.trim().toLowerCase()}`;
   const payload = {
     name: name.trim(),
     email: email.trim().toLowerCase(),

@@ -242,6 +242,18 @@ function withLeadsFile(mutator) {
 
 function appendLead(record) {
   return withLeadsFile((leads) => {
+    const email = typeof record.email === 'string' ? record.email.trim().toLowerCase() : '';
+    const courseId = typeof record.course_id === 'string' ? record.course_id.trim() : '';
+    // Someone who already has a saved lead for this course (e.g. filled the
+    // free-access form, then later filled it again from the "Получить
+    // рассылку" button) is opting into the newsletter — flag it for the
+    // admin panel instead of silently treating it as a plain duplicate.
+    record.repeat_lead = leads.some(
+      (lead) =>
+        typeof lead.email === 'string' &&
+        lead.email.trim().toLowerCase() === email &&
+        (typeof lead.course_id === 'string' ? lead.course_id.trim() : '') === courseId,
+    );
     leads.push(record);
   });
 }

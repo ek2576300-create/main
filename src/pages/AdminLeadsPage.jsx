@@ -171,6 +171,7 @@ export function AdminLeadsPage() {
                 <th className="px-3 py-2">Цена</th>
                 <th className="px-3 py-2">Источник</th>
                 <th className="px-3 py-2">Страница</th>
+                <th className="px-3 py-2">Рассылка</th>
                 <th className="px-3 py-2">Оплата</th>
               </tr>
             </thead>
@@ -185,6 +186,9 @@ export function AdminLeadsPage() {
                   <td className="px-3 py-2">{lead.source || '—'}</td>
                   <td className="max-w-[240px] truncate px-3 py-2 text-[#888]" title={lead.page_url}>
                     {lead.page_url || '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-center">
+                    <input type="checkbox" checked={Boolean(lead.repeat_lead)} readOnly aria-label="Оставил заявку повторно" className="h-4 w-4 accent-[#ffdc00]" />
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">
                     {lead.paid ? (
@@ -204,7 +208,7 @@ export function AdminLeadsPage() {
               ))}
               {filteredLeads.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-[#888]">
+                  <td colSpan={9} className="px-3 py-6 text-center text-[#888]">
                     Заявок не найдено
                   </td>
                 </tr>

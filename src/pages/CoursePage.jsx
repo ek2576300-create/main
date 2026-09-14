@@ -1,10 +1,12 @@
 import {
   BookOpen,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Clock3,
   FileSpreadsheet,
   FileText,
+  Pause,
   Play,
   Video,
   X,
@@ -47,7 +49,7 @@ function PreviewPoster({ course, lesson, onOpen }) {
   );
 }
 
-function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
+function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext, unlocked }) {
   const videoRef = useRef(null);
   const seekingRef = useRef(false);
   const [playing, setPlaying] = useState(false);
@@ -67,7 +69,7 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
   };
 
   return (
-    <article className="relative aspect-[512/1000] w-full overflow-hidden rounded-[26px] bg-[#1b1b1b] shadow-[0_18px_48px_rgba(0,0,0,.16)]">
+    <article className="group relative aspect-[512/1000] w-full overflow-hidden rounded-[26px] bg-[#1b1b1b] shadow-[0_18px_48px_rgba(0,0,0,.16)]">
       <style>{`
         .askhow-video-progress::-webkit-slider-runnable-track {
           height: 5px;
@@ -165,11 +167,25 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
           }}
           aria-label="Прогресс просмотра видео"
           className="askhow-video-progress h-[18px] w-full cursor-pointer appearance-none bg-transparent"
-          style={{ '--video-progress': `${progress * 100}%` }}
+          style={{ '--video-progress': `${progress * 100}%`, touchAction: 'none' }}
         />
       </div>
 
       <span className="pointer-events-none absolute left-[4.2%] top-[2.4%] z-20 rounded-[5px] bg-[#ff3030] px-3 py-1.5 text-[12px] font-medium leading-none text-white sm:text-[13px]">Бесплатно</span>
+
+      {unlocked && hasNext && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onNext();
+          }}
+          className="absolute right-[4.2%] top-[2.4%] z-40 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-semibold text-[#181818] shadow-[0_6px_18px_rgba(0,0,0,.25)] backdrop-blur transition hover:bg-white sm:text-[11px]"
+        >
+          Смотреть следующий урок
+          <ChevronRight size={13} />
+        </button>
+      )}
 
       {!playing && (
         <button
@@ -179,6 +195,17 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
           aria-label="Воспроизвести урок"
         >
           <Play size={24} className="ml-1 fill-current" />
+        </button>
+      )}
+
+      {playing && (
+        <button
+          type="button"
+          onClick={toggleVideo}
+          className="absolute left-1/2 top-1/2 z-20 grid h-[58px] w-[58px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/45 bg-black/25 text-white opacity-0 backdrop-blur-[1px] transition duration-200 group-hover:opacity-100 active:scale-95"
+          aria-label="Поставить на паузу"
+        >
+          <Pause size={24} className="fill-current" />
         </button>
       )}
 
@@ -300,6 +327,36 @@ function MaterialsSection() {
   );
 }
 
+function PaymentFailedModal({ open, onClose }) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return createPortal(
+    <div className="modal-backdrop-enter fixed inset-0 z-[100] flex items-end justify-center overflow-y-auto bg-black/55 p-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-8" role="dialog" aria-modal="true" aria-labelledby="payment-failed-title">
+      <button type="button" className="absolute inset-0 h-full w-full cursor-default" onClick={onClose} aria-label="Закрыть" />
+      <section className="modal-panel-enter modal-safe-panel relative z-10 w-full max-w-[440px] rounded-t-[24px] bg-white p-6 text-center shadow-[0_28px_90px_rgba(0,0,0,.28)] min-[390px]:p-7 sm:rounded-[24px]">
+        <button type="button" onClick={onClose} className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-[#f4f4f4] transition hover:bg-[#e9e9e9] min-[390px]:right-4 min-[390px]:top-4" aria-label="Закрыть"><X size={19} /></button>
+        <h2 id="payment-failed-title" className="mt-4 text-[22px] font-semibold leading-[1.2] sm:text-[25px]">Оплата не прошла</h2>
+        <p className="mt-3 text-[11px] leading-[1.5] text-[#666]">Деньги не списаны или платёж был отменён. Попробуйте оплатить ещё раз.</p>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 function UpdatesSection({ updates = [] }) {
   return (
     <section className="mt-12 sm:mt-16" style={{ display: 'none' }}>
@@ -330,12 +387,17 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   const [purchaseCtaOpen, setPurchaseCtaOpen] = useState(false);
   const [lessonsExpanded, setLessonsExpanded] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(() => isCourseUnlocked(course.id));
+  const [activeLessonId, setActiveLessonId] = useState(null);
+  const [paymentFailedOpen, setPaymentFailedOpen] = useState(false);
   const programRef = useRef(null);
   const viewedCourseRef = useRef(null);
   const previewStartedRef = useRef(null);
   const isFreeCourse = course.price === 'Бесплатно';
   const lessons = course.lessons || [];
   const previewLesson = lessons.find((lesson) => lesson.featured) || lessons[0] || null;
+  const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) || previewLesson;
+  const activeLessonIndex = activeLesson ? lessons.findIndex((lesson) => lesson.id === activeLesson.id) : -1;
+  const nextLesson = activeLessonIndex >= 0 ? lessons[activeLessonIndex + 1] : null;
   const visibleLessons = lessonsExpanded ? lessons : lessons.slice(0, 6);
 
   useEffect(() => {
@@ -344,11 +406,24 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     setPurchaseCtaOpen(false);
     setLessonsExpanded(false);
     setLeadCaptured(isCourseUnlocked(course.id));
+    setActiveLessonId(null);
     previewStartedRef.current = null;
     if (viewedCourseRef.current === course.id) return;
     viewedCourseRef.current = course.id;
     trackEvent('course_open', { course_id: course.id, course_title: course.title, course_price: course.price || null });
   }, [course.id, course.price, course.title]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') !== 'failed') return;
+    setPaymentOpen(false);
+    setPaymentGate(null);
+    setPaymentFailedOpen(true);
+    trackEvent('payment_failed_view', { course_id: course.id, course_title: course.title });
+    params.delete('payment');
+    const nextSearch = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+  }, [course.id, course.title]);
 
   const openPayment = (source) => {
     setPurchaseCtaOpen(false);
@@ -376,6 +451,19 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   };
 
   const openFreeAccess = (source) => {
+    if (isFreeCourse && leadCaptured) {
+      setPurchaseCtaOpen(false);
+      setPaymentGate({
+        resubscribe: true,
+        onAccessGranted: () => {
+          setPaymentOpen(false);
+          setPaymentGate(null);
+        },
+      });
+      setPaymentOpen(true);
+      trackEvent('newsletter_form_open', { course_id: course.id, course_title: course.title, source });
+      return;
+    }
     requestVideoAccess(source, () => {});
   };
 
@@ -395,15 +483,27 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     trackEvent('locked_lesson_click', { course_id: course.id, lesson_id: lesson.id });
   };
 
+  const goToNextLesson = () => {
+    if (!nextLesson) return;
+    trackEvent('next_lesson_click', { course_id: course.id, lesson_id: nextLesson.id });
+    if (nextLesson.video) {
+      setActiveLessonId(nextLesson.id);
+      openPreview();
+      return;
+    }
+    if (lessons.length > 6 && lessons.indexOf(nextLesson) >= 6) setLessonsExpanded(true);
+    openLesson(nextLesson);
+  };
+
   const handlePreviewPlay = () => {
-    if (!previewLesson || previewStartedRef.current === previewLesson.id) return;
-    previewStartedRef.current = previewLesson.id;
-    trackEvent('preview_start', { course_id: course.id, lesson_id: previewLesson.id });
+    if (!activeLesson || previewStartedRef.current === activeLesson.id) return;
+    previewStartedRef.current = activeLesson.id;
+    trackEvent('preview_start', { course_id: course.id, lesson_id: activeLesson.id });
   };
 
   const handlePreviewEnded = () => {
-    if (!previewLesson) return;
-    trackEvent('preview_complete', { course_id: course.id, lesson_id: previewLesson.id });
+    if (!activeLesson) return;
+    trackEvent('preview_complete', { course_id: course.id, lesson_id: activeLesson.id });
     setPurchaseCtaOpen(true);
   };
 
@@ -418,7 +518,7 @@ export function CoursePage({ course, author, onOpenAuthor }) {
             <div className="mt-5"><AuthorButton author={author} onOpenAuthor={onOpenAuthor} compact /></div>
             {course.tags?.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{course.tags.map((tag) => <span key={tag} className="rounded-full bg-[#edf7ff] px-3 py-1.5 text-[9px] font-medium text-[#1683ff]">{tag}</span>)}</div>}
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => (isFreeCourse ? openFreeAccess('course_header') : openPayment('course_header'))} className="pay-button-motion min-h-11 w-full rounded-full bg-[#ffdd00] px-6 text-[11px] font-semibold shadow-[0_8px_22px_rgba(255,221,0,.22)] sm:w-auto sm:min-w-[240px]">{getPaymentLabel(course)}</button>
+              <button type="button" onClick={() => (isFreeCourse ? openFreeAccess('course_header') : openPayment('course_header'))} className="pay-button-motion min-h-11 w-full rounded-full bg-[#ffdd00] px-6 text-[11px] font-semibold shadow-[0_8px_22px_rgba(255,221,0,.22)] sm:w-auto sm:min-w-[240px]">{getPaymentLabel(course, false, leadCaptured)}</button>
               <Metric index={0} value={course.duration || 'Уточняется'} />
               <Metric index={1} value={lessons.length || '—'} />
             </div>
@@ -429,11 +529,23 @@ export function CoursePage({ course, author, onOpenAuthor }) {
           {lessons.length > 0 && (
             <div className="mt-5 grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(280px,.92fr)_minmax(0,1.45fr)] lg:gap-7">
               <div className="min-w-0">
-                {previewLesson.video ? <InlineLessonVideo lesson={previewLesson} onPlay={handlePreviewPlay} onEnded={handlePreviewEnded} guardPlay={(action) => requestVideoAccess('preview_video', action)} /> : <LessonCard lesson={previewLesson} course={course} variant="player" onOpen={() => openLesson(previewLesson)} unlocked={isFreeCourse && leadCaptured} />}
+                {activeLesson.video ? (
+                  <InlineLessonVideo
+                    lesson={activeLesson}
+                    onPlay={handlePreviewPlay}
+                    onEnded={handlePreviewEnded}
+                    guardPlay={(action) => requestVideoAccess('preview_video', action)}
+                    onNext={goToNextLesson}
+                    hasNext={Boolean(nextLesson)}
+                    unlocked={isFreeCourse && leadCaptured}
+                  />
+                ) : (
+                  <LessonCard lesson={activeLesson} course={course} variant="player" onOpen={() => openLesson(activeLesson)} unlocked={isFreeCourse && leadCaptured} />
+                )}
               </div>
               <div className="min-w-0">
                 <div className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-6 min-[460px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-                  {visibleLessons.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} course={course} active={lesson.id === previewLesson.id} onOpen={() => openLesson(lesson)} unlocked={isFreeCourse && leadCaptured} />)}
+                  {visibleLessons.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} course={course} active={lesson.id === activeLesson.id} onOpen={() => openLesson(lesson)} unlocked={isFreeCourse && leadCaptured} />)}
                 </div>
                 {lessons.length > 6 && <button type="button" onClick={() => setLessonsExpanded((value) => !value)} className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#f1f1f1] px-5 text-[10px] font-semibold">{lessonsExpanded ? 'Скрыть уроки' : 'Посмотреть все уроки'}{lessonsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
               </div>
@@ -448,15 +560,17 @@ export function CoursePage({ course, author, onOpenAuthor }) {
 
         <UpdatesSection updates={course.updates} />
         <MaterialsSection />
-        <PurchaseCta open={purchaseCtaOpen} course={course} onClose={() => setPurchaseCtaOpen(false)} onBuy={() => (isFreeCourse ? openFreeAccess('floating_cta') : openPayment('floating_cta'))} />
+        <PurchaseCta open={purchaseCtaOpen} course={course} unlocked={isFreeCourse && leadCaptured} onClose={() => setPurchaseCtaOpen(false)} onBuy={() => (isFreeCourse ? openFreeAccess('floating_cta') : openPayment('floating_cta'))} />
         <PaymentModal
           open={paymentOpen}
           course={course}
-          source="course_page"
+          source={paymentGate?.resubscribe ? 'newsletter_signup' : 'course_page'}
           onClose={() => { setPaymentOpen(false); setPaymentGate(null); }}
           forceFree={Boolean(paymentGate)}
           onAccessGranted={paymentGate?.onAccessGranted}
+          allowResubmit={Boolean(paymentGate?.resubscribe)}
         />
+        <PaymentFailedModal open={paymentFailedOpen} onClose={() => setPaymentFailedOpen(false)} />
       </div>
     </main>
   );

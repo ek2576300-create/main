@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-export function PurchaseCta({ open, course, onClose, onBuy }) {
+export function PurchaseCta({ open, course, unlocked = false, onClose, onBuy }) {
   useEffect(() => {
     if (!open) return undefined;
 
@@ -37,7 +37,7 @@ export function PurchaseCta({ open, course, onClose, onBuy }) {
           onClick={onBuy}
           className="pressable pay-button-motion min-h-12 shrink-0 rounded-full bg-[#ffdc00] px-6 text-[11px] font-semibold shadow-[0_10px_24px_rgba(255,220,0,.26)] sm:min-w-[190px]"
         >
-          {hasPrice ? `Купить курс · ${course.price}` : 'Получить доступ'}
+          {hasPrice ? `Купить курс · ${course.price}` : unlocked ? 'Получить рассылку' : 'Получить доступ'}
         </button>
 
         <button

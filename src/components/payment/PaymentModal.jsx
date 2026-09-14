@@ -6,7 +6,7 @@ import { savePaymentLead, submitMonetaPayment } from '../../utils/payment';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function PaymentModal({ open, course, source = 'course_page', onClose, onPayment, forceFree = false, onAccessGranted }) {
+export function PaymentModal({ open, course, source = 'course_page', onClose, onPayment, forceFree = false, onAccessGranted, allowResubmit = false }) {
   const [form, setForm] = useState({ name: '', email: '', accepted: false });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
@@ -65,7 +65,7 @@ export function PaymentModal({ open, course, source = 'course_page', onClose, on
     setSubmitting(true);
     setSubmitError('');
     try {
-      await savePaymentLead({ course, name: form.name, email: form.email, source });
+      await savePaymentLead({ course, name: form.name, email: form.email, source, allowResubmit });
       trackEvent('payment_form_success', { course_id: course.id, course_title: course.title, source });
       onPayment?.();
       if (isFree) {
