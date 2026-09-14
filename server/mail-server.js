@@ -92,9 +92,10 @@ function escapeHtml(value) {
 }
 
 // Shared chrome so every outgoing email looks like it came from the same
-// product: a yellow AskHow header, a card body, and Telegram/MAX links in
-// the footer so recipients always have a way to reach us.
-function renderEmailShell({ preheader = '', title, bodyHtml }) {
+// product: a yellow AskHow header, an optional accent strip under it, a card
+// body, and Telegram/MAX links in the footer so recipients always have a way
+// to reach us.
+function renderEmailShell({ preheader = '', title, eyebrow = '', bodyHtml }) {
   return `<!doctype html>
 <html lang="ru">
   <head>
@@ -102,15 +103,20 @@ function renderEmailShell({ preheader = '', title, bodyHtml }) {
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>${escapeHtml(title)}</title>
   </head>
-  <body style="margin:0;padding:0;background:#f6f6f6;font-family:Arial,Helvetica,sans-serif;">
-    <span style="display:none;font-size:1px;color:#f6f6f6;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</span>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f6f6;padding:24px 12px;">
+  <body style="margin:0;padding:0;background:#f3f4f2;font-family:Arial,Helvetica,sans-serif;">
+    <span style="display:none;font-size:1px;color:#f3f4f2;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</span>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f2;padding:28px 12px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.08);">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:22px;overflow:hidden;box-shadow:0 20px 55px rgba(0,0,0,.09);">
             <tr>
-              <td style="background:#ffdc00;padding:22px 28px;">
-                <span style="font-size:19px;font-weight:900;letter-spacing:-1px;color:#111;">AskHow</span>
+              <td style="background:linear-gradient(135deg,#ffe14d,#ffdc00);padding:24px 28px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="font-size:20px;font-weight:900;letter-spacing:-1px;color:#111;">🎓 AskHow</td>
+                    ${eyebrow ? `<td align="right" style="font-size:11px;font-weight:700;color:#6b5900;">${eyebrow}</td>` : ''}
+                  </tr>
+                </table>
               </td>
             </tr>
             <tr>
@@ -119,10 +125,10 @@ function renderEmailShell({ preheader = '', title, bodyHtml }) {
               </td>
             </tr>
             <tr>
-              <td style="padding:22px 28px 28px;border-top:1px solid #ececec;">
+              <td style="padding:22px 28px 28px;border-top:1px solid #ececec;background:#fafafa;">
                 <p style="margin:0 0 14px;font-size:12px;line-height:1.6;color:#777;">Мы на связи и рады помочь с любыми вопросами.</p>
-                <a href="${TELEGRAM_URL}" style="display:inline-block;margin:0 10px 10px 0;padding:11px 18px;border-radius:999px;background:#111;color:#ffffff;font-size:12px;font-weight:700;text-decoration:none;">Канал в Telegram</a>
-                <a href="${MAX_SUPPORT_URL}" style="display:inline-block;margin:0 10px 10px 0;padding:11px 18px;border-radius:999px;background:#f4f4f4;color:#111;font-size:12px;font-weight:700;text-decoration:none;">Поддержка в MAX</a>
+                <a href="${TELEGRAM_URL}" style="display:inline-block;margin:0 10px 10px 0;padding:11px 18px;border-radius:999px;background:#111;color:#ffffff;font-size:12px;font-weight:700;text-decoration:none;">✈️ Канал в Telegram</a>
+                <a href="${MAX_SUPPORT_URL}" style="display:inline-block;margin:0 10px 10px 0;padding:11px 18px;border-radius:999px;background:#ffffff;border:1px solid #e2e2e2;color:#111;font-size:12px;font-weight:700;text-decoration:none;">💬 Поддержка в MAX</a>
                 <p style="margin:16px 0 0;font-size:10px;line-height:1.6;color:#aaa;">ООО «АСКХАУ» · <a href="${SITE_URL}" style="color:#aaa;">${SITE_URL.replace('https://', '')}</a></p>
               </td>
             </tr>
@@ -135,37 +141,54 @@ function renderEmailShell({ preheader = '', title, bodyHtml }) {
 }
 
 function buildEmail(lead) {
+  const isFree = !lead.price || lead.price === 'Бесплатно';
   const rows = [
-    ['Имя', lead.name],
-    ['Email', lead.email],
-    ['Курс', lead.course_title || lead.course_id || '—'],
-    ['Цена', `${lead.price ?? '—'} ${lead.currency || ''}`.trim()],
-    ['Источник', lead.source || '—'],
-    ['Форма', lead.form_name || lead.form_id || '—'],
-    ['Страница', lead.page_url || '—'],
-    ['Время', lead.time || new Date().toISOString()],
+    ['👤', 'Имя', lead.name],
+    ['📧', 'Email', lead.email],
+    ['📚', 'Курс', lead.course_title || lead.course_id || '—'],
+    ['💰', 'Цена', isFree ? 'Бесплатно' : `${lead.price ?? '—'} ${lead.currency || ''}`.trim()],
+    ['🔗', 'Источник', lead.source || '—'],
+    ['📝', 'Форма', lead.form_name || lead.form_id || '—'],
+    ['🌐', 'Страница', lead.page_url || '—'],
+    ['🕒', 'Время', lead.received_at || lead.time || new Date().toISOString()],
   ];
 
+  const badges = [
+    isFree
+      ? '<span style="display:inline-block;margin:0 8px 8px 0;padding:5px 12px;border-radius:999px;background:#e8f9ef;color:#1c7a3f;font-size:11px;font-weight:700;">🆓 Бесплатный курс</span>'
+      : '<span style="display:inline-block;margin:0 8px 8px 0;padding:5px 12px;border-radius:999px;background:#fff6cf;color:#8a6d00;font-size:11px;font-weight:700;">💳 Платный курс</span>',
+    lead.repeat_lead
+      ? '<span style="display:inline-block;margin:0 8px 8px 0;padding:5px 12px;border-radius:999px;background:#edf7ff;color:#1683ff;font-size:11px;font-weight:700;">🔁 Повторная заявка (рассылка)</span>'
+      : '',
+  ]
+    .filter(Boolean)
+    .join('');
+
   const bodyHtml = `
-    <h1 style="margin:0 0 18px;font-size:20px;line-height:1.3;">Новая заявка на сайте</h1>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;line-height:1.6;">
+    <h1 style="margin:0 0 6px;font-size:21px;line-height:1.3;">📩 Новая заявка на сайте</h1>
+    <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#777;">Кто-то только что оставил заявку в каталоге AskHow.</p>
+    <div style="margin:0 0 18px;">${badges}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;line-height:1.6;background:#fafafa;border-radius:14px;">
       ${rows
         .map(
-          ([label, value]) => `
+          ([icon, label, value]) => `
         <tr>
-          <td style="padding:7px 0;color:#888;width:110px;vertical-align:top;">${escapeHtml(label)}</td>
-          <td style="padding:7px 0;color:#181818;">${escapeHtml(value)}</td>
+          <td style="padding:9px 0 9px 16px;width:26px;vertical-align:top;">${icon}</td>
+          <td style="padding:9px 8px;color:#888;width:100px;vertical-align:top;">${escapeHtml(label)}</td>
+          <td style="padding:9px 16px 9px 0;color:#181818;font-weight:600;">${escapeHtml(value)}</td>
         </tr>`,
         )
         .join('')}
-    </table>`;
+    </table>
+    <a href="${SITE_URL}/admin/leads" style="display:inline-block;margin-top:20px;padding:13px 24px;border-radius:999px;background:#ffdc00;color:#111;font-size:13px;font-weight:700;text-decoration:none;">Открыть заявки в админке →</a>`;
 
   return {
-    subject: `Новая заявка: ${lead.course_title || lead.course_id || 'без курса'}`,
-    text: rows.map(([label, value]) => `${label}: ${value}`).join('\n'),
+    subject: `📩 Новая заявка: ${lead.course_title || lead.course_id || 'без курса'}`,
+    text: rows.map(([icon, label, value]) => `${icon} ${label}: ${value}`).join('\n'),
     html: renderEmailShell({
       title: 'Новая заявка — AskHow',
       preheader: `Новая заявка от ${lead.name || lead.email}`,
+      eyebrow: isFree ? 'Бесплатный курс' : 'Платный курс',
       bodyHtml,
     }),
   };
@@ -174,28 +197,85 @@ function buildEmail(lead) {
 function buildThankYouEmail(lead) {
   const courseTitle = lead.course_title || lead.course_id || 'курс';
   const greeting = lead.name ? `Здравствуйте, ${lead.name}!` : 'Здравствуйте!';
-  const priceLine = lead.price ? `Сумма: ${lead.price} ${lead.currency || ''}`.trim() : null;
+  const priceLine = lead.price ? `${lead.price} ${lead.currency || ''}`.trim() : null;
+
+  const steps = [
+    ['1', 'Оплата получена', 'Мы уже видим вашу оплату в системе — всё прошло успешно.'],
+    ['2', 'Готовим доступ', 'В ближайшее время пришлём на этот e-mail всё необходимое для начала обучения.'],
+    ['3', 'Учитесь в своём темпе', 'Возвращайтесь в каталог в любое удобное время — курс уже открыт для вас.'],
+  ];
 
   const bodyHtml = `
-    <h1 style="margin:0 0 16px;font-size:24px;line-height:1.3;">${escapeHtml(greeting)}</h1>
-    <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#333;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding-bottom:6px;">
+          <div style="display:inline-block;width:56px;height:56px;border-radius:999px;background:linear-gradient(135deg,#34d979,#1fb45f);color:#ffffff;font-size:26px;line-height:56px;text-align:center;">✓</div>
+        </td>
+      </tr>
+    </table>
+    <h1 style="margin:16px 0 0;font-size:24px;line-height:1.3;text-align:center;">🎉 ${escapeHtml(greeting)}</h1>
+    <p style="margin:12px auto 0;max-width:420px;font-size:14px;line-height:1.6;color:#333;text-align:center;">
       Спасибо за оплату курса «<strong>${escapeHtml(courseTitle)}</strong>».
     </p>
-    ${priceLine ? `<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#333;">${escapeHtml(priceLine)}</p>` : ''}
-    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#333;">
-      Мы уже готовим для вас доступ и в ближайшее время пришлём все детали на этот e-mail.
-    </p>
-    <a href="${SITE_URL}" style="display:inline-block;padding:14px 26px;border-radius:999px;background:#ffdc00;color:#111;font-size:13px;font-weight:700;text-decoration:none;">Перейти в каталог</a>`;
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0;background:#f7faf8;border:1px solid #e4f3ea;border-radius:16px;">
+      <tr>
+        <td style="padding:16px 18px;font-size:13px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:5px 0;color:#888;">📚 Курс</td>
+              <td align="right" style="padding:5px 0;font-weight:700;">${escapeHtml(courseTitle)}</td>
+            </tr>
+            ${
+              priceLine
+                ? `<tr><td style="padding:5px 0;color:#888;border-top:1px dashed #dfe8e2;">💳 Оплачено</td><td align="right" style="padding:5px 0;font-weight:700;border-top:1px dashed #dfe8e2;">${escapeHtml(priceLine)}</td></tr>`
+                : ''
+            }
+            <tr>
+              <td style="padding:5px 0;color:#888;border-top:1px dashed #dfe8e2;">📧 E-mail</td>
+              <td align="right" style="padding:5px 0;font-weight:700;border-top:1px dashed #dfe8e2;">${escapeHtml(lead.email || '—')}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0;">
+      ${steps
+        .map(
+          ([n, title, text]) => `
+        <tr>
+          <td style="padding:8px 0;vertical-align:top;width:34px;">
+            <div style="width:26px;height:26px;border-radius:999px;background:#fff6cf;color:#8a6d00;font-size:12px;font-weight:800;line-height:26px;text-align:center;">${n}</div>
+          </td>
+          <td style="padding:8px 0 8px 10px;vertical-align:top;">
+            <p style="margin:0;font-size:13px;font-weight:700;color:#111;">${escapeHtml(title)}</p>
+            <p style="margin:2px 0 0;font-size:12px;line-height:1.55;color:#666;">${escapeHtml(text)}</p>
+          </td>
+        </tr>`,
+        )
+        .join('')}
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+      <tr>
+        <td align="center">
+          <a href="${SITE_URL}" style="display:inline-block;padding:14px 28px;border-radius:999px;background:#ffdc00;color:#111;font-size:13px;font-weight:700;text-decoration:none;">🎓 Перейти в каталог</a>
+        </td>
+      </tr>
+    </table>`;
 
   return {
-    subject: `Спасибо за оплату — ${courseTitle}`.slice(0, 180),
+    subject: `🎉 Спасибо за оплату — ${courseTitle}`.slice(0, 180),
     text: [
       greeting,
       '',
       `Спасибо за оплату курса «${courseTitle}».`,
-      priceLine,
+      priceLine ? `Оплачено: ${priceLine}` : null,
       '',
-      'Мы уже готовим для вас доступ и в ближайшее время пришлём все детали на этот e-mail.',
+      '1) Оплата получена — мы уже видим её в системе.',
+      '2) Готовим доступ — пришлём детали на этот e-mail в ближайшее время.',
+      '3) Учитесь в своём темпе — курс уже открыт в каталоге.',
       '',
       `Канал в Telegram: ${TELEGRAM_URL}`,
       `Поддержка в MAX: ${MAX_SUPPORT_URL}`,
@@ -207,6 +287,7 @@ function buildThankYouEmail(lead) {
     html: renderEmailShell({
       title: 'Спасибо за оплату — AskHow',
       preheader: `Спасибо за оплату курса «${courseTitle}»`,
+      eyebrow: 'Оплата подтверждена',
       bodyHtml,
     }),
   };
@@ -402,7 +483,9 @@ const server = createServer(async (req, res) => {
 
   // The form should not wait on SMTP: the lead is already safely on disk and
   // visible in the admin panel, email is just a best-effort extra notice.
-  const { subject, text, html } = buildEmail(lead);
+  // Built from `record` (not the raw `lead` body) so the notification also
+  // carries received_at and the repeat_lead flag appendLead just computed.
+  const { subject, text, html } = buildEmail(record);
   transporter
     .sendMail({ from: process.env.MAIL_FROM, to: process.env.MAIL_TO, replyTo: lead.email, subject, text, html })
     .then((info) => console.log('Email delivered:', info.messageId))

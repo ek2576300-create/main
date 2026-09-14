@@ -19,7 +19,7 @@ import { LessonCard } from '../components/catalog/LessonCard';
 import { PurchaseCta } from '../components/catalog/PurchaseCta';
 import { PaymentModal } from '../components/payment/PaymentModal';
 import { trackEvent } from '../utils/analytics';
-import { getPaymentLabel, isCourseUnlocked } from '../utils/payment';
+import { getPaymentLabel, isCourseUnlocked, isFreeTeaser } from '../utils/payment';
 
 const METRIC_STYLES = [
   { bg: 'bg-[#edf7ff]', iconBg: 'bg-[#16a7ff]', text: 'text-[#168fff]', icon: Clock3, label: 'Длительность' },
@@ -200,7 +200,7 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
         />
       </div>
 
-      <span className="pointer-events-none absolute left-[4.2%] top-[2.4%] z-20 rounded-[5px] bg-[#ff3030] px-3 py-1.5 text-[12px] font-medium leading-none text-white sm:text-[13px]">Бесплатно</span>
+      <span className="pointer-events-none absolute left-[4.2%] top-[2.4%] z-20 rounded-[5px] bg-[#22c55e] px-3 py-1.5 text-[12px] font-medium leading-none text-white sm:text-[13px]">Бесплатно</span>
 
       {unlocked && hasNext && (
         <button
@@ -543,6 +543,7 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   useEffect(() => {
     setCourseCta({
       label: getPaymentLabel(course, false, leadCaptured),
+      teaser: isFreeTeaser(course, leadCaptured),
       onClick: () => (isFreeCourse ? openFreeAccess('site_footer') : openPayment('site_footer')),
     });
     return () => setCourseCta(null);
@@ -559,7 +560,17 @@ export function CoursePage({ course, author, onOpenAuthor }) {
             <div className="mt-5"><AuthorButton author={author} onOpenAuthor={onOpenAuthor} compact /></div>
             {course.tags?.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{course.tags.map((tag) => <span key={tag} className="rounded-full bg-[#edf7ff] px-3 py-1.5 text-[9px] font-medium text-[#1683ff]">{tag}</span>)}</div>}
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => (isFreeCourse ? openFreeAccess('course_header') : openPayment('course_header'))} className="pay-button-motion min-h-11 w-full rounded-full bg-[#ffdd00] px-6 text-[11px] font-semibold shadow-[0_8px_22px_rgba(255,221,0,.22)] sm:w-auto sm:min-w-[240px]">{getPaymentLabel(course, false, leadCaptured)}</button>
+              <button
+                type="button"
+                onClick={() => (isFreeCourse ? openFreeAccess('course_header') : openPayment('course_header'))}
+                className={`pay-button-motion min-h-11 w-full rounded-full px-6 text-[11px] font-semibold sm:w-auto sm:min-w-[240px] ${
+                  isFreeTeaser(course, leadCaptured)
+                    ? 'bg-[#22c55e] text-white shadow-[0_8px_22px_rgba(34,197,94,.28)]'
+                    : 'bg-[#ffdd00] shadow-[0_8px_22px_rgba(255,221,0,.22)]'
+                }`}
+              >
+                {getPaymentLabel(course, false, leadCaptured)}
+              </button>
               <Metric index={0} value={course.duration || 'Уточняется'} />
               <Metric index={1} value={lessons.length || '—'} />
             </div>

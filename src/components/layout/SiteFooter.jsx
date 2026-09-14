@@ -1,5 +1,14 @@
+import { MessageCircle, Send } from 'lucide-react';
 import { useAppContext } from '../../app/AppContext';
 import { CookieConsent } from './CookieConsent';
+
+const TELEGRAM_URL = 'https://t.me/+J1XU4RVIVQM1NjBi';
+const MAX_URL = 'https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc';
+
+const SOCIAL_LINKS = [
+  { key: 'tg', label: 'Telegram', href: TELEGRAM_URL, icon: Send },
+  { key: 'wa', label: 'WhatsApp', href: '#contacts', icon: MessageCircle },
+];
 
 const BANK_SERVICES = [
   { label: 'Альфа-Клик', src: '/images/payments/alfa-bank.webp' },
@@ -85,11 +94,27 @@ export function SiteFooter() {
             <a href="mailto:info@askhow.ru" className="text-[19px] font-semibold">info@askhow.ru</a>
             <p className="mt-3 text-[10px]">+7(929)734-55-00</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              {['tg', 'wa', 'vk'].map((item) => (
-                <a href="#contacts" key={item} className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[9px]">{item}</a>
+              {SOCIAL_LINKS.map(({ key, label, href, icon: Icon }) => (
+                <a
+                  href={href}
+                  key={key}
+                  target={href.startsWith('http') ? '_blank' : undefined}
+                  rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[#181818] transition hover:bg-[#f0f0f0]"
+                  aria-label={label}
+                >
+                  <Icon size={16} />
+                </a>
               ))}
               <a
-                href="https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc"
+                href="#contacts"
+                className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[10px] font-bold tracking-tight"
+                aria-label="VK"
+              >
+                VK
+              </a>
+              <a
+                href={MAX_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="grid h-10 min-w-10 place-items-center rounded-full bg-[#f8f9fa] px-3 text-[9px] font-semibold"
@@ -104,7 +129,9 @@ export function SiteFooter() {
             <button
               type="button"
               onClick={courseCta ? courseCta.onClick : undefined}
-              className="pay-button-motion h-11 w-full min-[390px]:w-auto min-[390px]:min-w-[190px] rounded-full bg-[#ffdc00] px-7 text-[10px] font-medium"
+              className={`pay-button-motion h-11 w-full min-[390px]:w-auto min-[390px]:min-w-[190px] rounded-full px-7 text-[10px] font-medium ${
+                courseCta?.teaser ? 'bg-[#22c55e] text-white' : 'bg-[#ffdc00]'
+              }`}
             >
               {courseCta ? courseCta.label : 'Оставить заявку'}
             </button>

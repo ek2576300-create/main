@@ -7,7 +7,14 @@ export function getPaymentLabel(course, compact = false, unlocked = false) {
   if (course.price && course.price !== 'Бесплатно') {
     return compact ? `Оплатить · ${course.price}` : `Оплатить курс · ${course.price}`;
   }
-  return unlocked ? 'Получить рассылку' : 'Получить доступ';
+  return unlocked ? 'Получить рассылку' : 'Бесплатно';
+}
+
+// A free course's link/button turns green and reads "Бесплатно" before the
+// visitor has left their details; once unlocked it goes back to the normal
+// yellow "Получить рассылку" treatment.
+export function isFreeTeaser(course, unlocked = false) {
+  return Boolean(course?.price === 'Бесплатно' && !unlocked);
 }
 
 function createTransactionId(courseId) {
@@ -24,6 +31,9 @@ export function submitMonetaPayment(course, { email } = {}) {
   // which lead to mark as paid and email.
   const successUrl = new URL(MONETA_SUCCESS_URL);
   successUrl.searchParams.set('course_id', course.id);
+  successUrl.searchParams.set('course_title', course.title);
+  if (payment.amount) successUrl.searchParams.set('price', String(payment.amount));
+  if (payment.currency) successUrl.searchParams.set('currency', payment.currency);
   if (email) successUrl.searchParams.set('email', email.trim().toLowerCase());
 
   // Failed/cancelled payments send the visitor back to the course page itself

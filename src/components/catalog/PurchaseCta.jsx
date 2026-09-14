@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { isFreeTeaser } from '../../utils/payment';
 
 export function PurchaseCta({ open, course, unlocked = false, onClose, onBuy }) {
   useEffect(() => {
@@ -17,6 +18,7 @@ export function PurchaseCta({ open, course, unlocked = false, onClose, onBuy }) 
   if (!open || !course) return null;
 
   const hasPrice = course.price && course.price !== 'Бесплатно';
+  const teaser = isFreeTeaser(course, unlocked);
 
   return createPortal(
     <div className="pointer-events-none fixed inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-[900] flex justify-center sm:inset-x-5 sm:bottom-5">
@@ -35,9 +37,13 @@ export function PurchaseCta({ open, course, unlocked = false, onClose, onBuy }) 
         <button
           type="button"
           onClick={onBuy}
-          className="pressable pay-button-motion min-h-12 shrink-0 rounded-full bg-[#ffdc00] px-6 text-[11px] font-semibold shadow-[0_10px_24px_rgba(255,220,0,.26)] sm:min-w-[190px]"
+          className={`pressable pay-button-motion min-h-12 shrink-0 rounded-full px-6 text-[11px] font-semibold sm:min-w-[190px] ${
+            teaser
+              ? 'bg-[#22c55e] text-white shadow-[0_10px_24px_rgba(34,197,94,.3)]'
+              : 'bg-[#ffdc00] shadow-[0_10px_24px_rgba(255,220,0,.26)]'
+          }`}
         >
-          {hasPrice ? `Купить курс · ${course.price}` : unlocked ? 'Получить рассылку' : 'Получить доступ'}
+          {hasPrice ? `Купить курс · ${course.price}` : unlocked ? 'Получить рассылку' : 'Бесплатно'}
         </button>
 
         <button

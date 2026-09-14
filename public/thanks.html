@@ -14,7 +14,7 @@
         display: grid;
         place-items: center;
         padding: 24px;
-        background: #f6f6f6;
+        background: radial-gradient(120% 120% at 50% -10%, #fff9dc 0%, #f6f6f6 45%, #f6f6f6 100%);
         color: #111;
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
       }
@@ -40,8 +40,18 @@
         font-weight: 900;
         letter-spacing: -1px;
       }
+      .check-badge {
+        display: grid;
+        place-items: center;
+        width: 84px;
+        height: 84px;
+        margin: 26px auto 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #34d979, #1fb45f);
+        box-shadow: 0 16px 34px rgba(31,180,95,.35);
+      }
       h1 {
-        margin: 28px 0 0;
+        margin: 22px 0 0;
         font-size: clamp(30px, 6vw, 48px);
         line-height: 1.04;
         letter-spacing: -.035em;
@@ -53,10 +63,63 @@
         line-height: 1.55;
         color: #555;
       }
+      .order-card {
+        margin: 26px auto 0;
+        max-width: 470px;
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: #f7faf8;
+        border: 1px solid #e4f3ea;
+        text-align: left;
+      }
+      .order-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 0;
+        font-size: 13px;
+      }
+      .order-row + .order-row { border-top: 1px dashed #e0e0e0; }
+      .order-row span:first-child { color: #888; }
+      .order-row span:last-child { font-weight: 700; text-align: right; }
+      .steps {
+        margin: 30px auto 0;
+        max-width: 470px;
+        text-align: left;
+        display: grid;
+        gap: 14px;
+      }
+      .step {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .step-icon {
+        flex: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: #fff6cf;
+        color: #8a6d00;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .step p {
+        margin: 0;
+        max-width: none;
+        font-size: 13px;
+        color: #444;
+        text-align: left;
+      }
+      .step strong { display: block; font-size: 13px; color: #111; margin-bottom: 2px; }
       .button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 8px;
         min-height: 52px;
         margin-top: 30px;
         padding: 0 26px;
@@ -75,14 +138,24 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: center;
-        gap: 8px 18px;
-        margin: 18px auto 0;
+        gap: 10px 14px;
+        margin: 22px auto 0;
       }
       .social-links a {
-        color: #555;
-        font-size: 13px;
-        text-underline-offset: 3px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 16px;
+        border-radius: 999px;
+        background: #f4f4f4;
+        color: #222;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background-color .18s ease;
       }
+      .social-links a:hover { background: #ebebeb; }
+      .social-links svg { width: 15px; height: 15px; flex: none; }
       @media (max-width: 520px) {
         body { padding: 14px; }
         .card { padding: 36px 20px; border-radius: 22px; }
@@ -110,12 +183,54 @@
     <noscript><div><img src="https://mc.yandex.ru/watch/112288061" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <main class="card">
       <div class="logo">AskHow</div>
+      <div class="check-badge" aria-hidden="true">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+          <path d="M5 13l4.5 4.5L19 7.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <h1 id="thanks-title">Спасибо!</h1>
       <p id="thanks-copy">Оплата прошла успешно. Мы отправим информацию о доступе на e-mail, указанный перед оплатой.</p>
+
+      <div class="order-card" id="order-card" hidden>
+        <div class="order-row" id="order-course" hidden>
+          <span>Курс</span>
+          <span id="order-course-value"></span>
+        </div>
+        <div class="order-row" id="order-price" hidden>
+          <span>Оплачено</span>
+          <span id="order-price-value"></span>
+        </div>
+        <div class="order-row" id="order-email" hidden>
+          <span>E-mail</span>
+          <span id="order-email-value"></span>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <span class="step-icon">1</span>
+          <p><strong>Заявка получена</strong>Мы уже видим вашу оплату в системе.</p>
+        </div>
+        <div class="step">
+          <span class="step-icon">2</span>
+          <p><strong>Письмо с доступом</strong>Придёт на указанный e-mail в течение ближайшего времени.</p>
+        </div>
+        <div class="step">
+          <span class="step-icon">3</span>
+          <p><strong>Начинайте обучение</strong>Возвращайтесь в каталог и открывайте курс — доступ уже открыт.</p>
+        </div>
+      </div>
+
       <a class="button" href="https://catalog.askhow.ru/">Вернуться в каталог</a>
       <div class="social-links">
-        <a href="https://t.me/+J1XU4RVIVQM1NjBi" target="_blank" rel="noopener noreferrer">Наш канал в Telegram</a>
-        <a href="https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc" target="_blank" rel="noopener noreferrer">Открыть AskHow в MAX</a>
+        <a href="https://t.me/+J1XU4RVIVQM1NjBi" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M21.2 3.6 2.9 10.7c-1.2.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.5c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.2-2.1 4.6 3.4c.8.5 1.4.2 1.6-.7l3-14c.3-1.2-.4-1.7-1.2-1.5Z" fill="currentColor"/></svg>
+          Telegram
+        </a>
+        <a href="https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v12H8l-4 4V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          MAX
+        </a>
       </div>
     </main>
     <script>
@@ -125,11 +240,39 @@
           window.ym(112288061, 'reachGoal', 'payment_success');
         }
 
+        var email = params.get('email');
+        var courseId = params.get('course_id');
+        var courseTitle = params.get('course_title');
+        var price = params.get('price');
+        var currency = params.get('currency') || 'RUB';
+
+        if (courseTitle) {
+          document.title = 'Спасибо за оплату «' + courseTitle + '» — AskHow';
+          document.getElementById('thanks-copy').textContent =
+            'Оплата курса «' + courseTitle + '» прошла успешно. Мы отправим информацию о доступе на e-mail, указанный перед оплатой.';
+        }
+
+        var anyRow = false;
+        if (courseTitle) {
+          document.getElementById('order-course-value').textContent = courseTitle;
+          document.getElementById('order-course').hidden = false;
+          anyRow = true;
+        }
+        if (price) {
+          document.getElementById('order-price-value').textContent = price + ' ' + currency;
+          document.getElementById('order-price').hidden = false;
+          anyRow = true;
+        }
+        if (email) {
+          document.getElementById('order-email-value').textContent = email;
+          document.getElementById('order-email').hidden = false;
+          anyRow = true;
+        }
+        if (anyRow) document.getElementById('order-card').hidden = false;
+
         // Tell the backend which lead just paid, so it can mark it paid in the
         // admin panel and send the client a thank-you email. Best-effort: a
         // failure here should never block the "thank you" page from showing.
-        var email = params.get('email');
-        var courseId = params.get('course_id');
         if (email && courseId) {
           fetch('/mail-api/lead/paid', {
             method: 'POST',
