@@ -22,6 +22,12 @@ console.log(`  MAIL_TO       ${process.env.MAIL_TO || '(пусто)'}`);
 if (process.env.MAIL_FROM && user && process.env.MAIL_FROM !== user) {
   console.log('\n! MAIL_FROM не совпадает с SMTP_USER — Яндекс отклонит такие письма (550 Sender address rejected).');
 }
+// Этот адрес годами лежал в .env.example, но такого ящика не существует:
+// письма о заявках уходили и возвращались отбивкой «554 Unknown user».
+if (process.env.MAIL_TO === 'askhow-egorbanderenko@yandex.ru') {
+  console.log('\n! MAIL_TO указывает на несуществующий ящик askhow-egorbanderenko@yandex.ru.');
+  console.log('  Уведомления о заявках будут возвращаться отбивкой. Впишите реальный адрес.');
+}
 if (secure && port === 587) console.log('\n! Порт 587 требует SMTP_SECURE=false.');
 if (!secure && port === 465) console.log('\n! Порт 465 требует SMTP_SECURE=true.');
 
@@ -51,4 +57,6 @@ if (process.argv.includes('--send')) {
     text: 'Если это письмо пришло, отправка с сервера работает.',
   });
   console.log(`Тестовое письмо отправлено на ${process.env.MAIL_TO}: ${info.messageId}`);
+  console.log('Это значит, что Яндекс письмо принял. Если ящика не существует,');
+  console.log('отбивка «554 Unknown user» придёт отдельным письмом через минуту.');
 }
