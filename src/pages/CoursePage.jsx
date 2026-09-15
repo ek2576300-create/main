@@ -629,6 +629,9 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   const handlePreviewEnded = () => {
     if (!activeLesson) return;
     trackEvent('preview_complete', { course_id: course.id, lesson_id: activeLesson.id });
+    // Someone who already opened the free course does not need a "get full
+    // access" prompt after every lesson.
+    if (isFreeCourse && leadCaptured) return;
     setPurchaseCtaOpen(true);
   };
 

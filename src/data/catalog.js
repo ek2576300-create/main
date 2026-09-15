@@ -256,20 +256,26 @@ function createStoredLessons({
   extension = 'jpg',
   lessonMeta = [],
   images = [],
+  videos = [],
 }) {
-  return Array.from({ length: count }, (_, index) => ({
-    id: `${courseId}-lesson-${index + 1}`,
-    title: lessonMeta[index]?.[0] || `Урок ${index + 1}`,
-    subtitle,
-    duration: lessonMeta[index]?.[1] || 'Уточняется',
-    image: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
-    poster: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
-    video: index === 0 ? COURSE_PREVIEW_VIDEOS[courseId] || null : null,
-    free: index === 0 && Boolean(COURSE_PREVIEW_VIDEOS[courseId]),
-    locked: index !== 0 || !COURSE_PREVIEW_VIDEOS[courseId],
-    featured: index === 0,
-    tags,
-  }));
+  return Array.from({ length: count }, (_, index) => {
+    // A course can ship a file per lesson; otherwise only the first lesson
+    // carries the course preview and the rest stay locked.
+    const video = videos[index] || (index === 0 ? COURSE_PREVIEW_VIDEOS[courseId] || null : null);
+    return {
+      id: `${courseId}-lesson-${index + 1}`,
+      title: lessonMeta[index]?.[0] || `Урок ${index + 1}`,
+      subtitle,
+      duration: lessonMeta[index]?.[1] || 'Уточняется',
+      image: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
+      poster: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
+      video,
+      free: index === 0 && Boolean(video),
+      locked: index !== 0 || !video,
+      featured: index === 0,
+      tags,
+    };
+  });
 }
 
 const pavelSemenovLessons = createStoredLessons({
@@ -304,10 +310,21 @@ const igorVeretennikovLessons = createStoredLessons({
     ['Модуль 6 Карьера', '21:05'],
   ],
 });
+// The only course that currently ships a video for every lesson, not just the
+// preview one, so each entry maps to its own uploaded file.
+const WORD_OF_MOUTH_LESSON_VIDEOS = [
+  COURSE_PREVIEW_VIDEOS['word-of-mouth-promotion'],
+  '/videos/previews/2.mp4',
+  '/videos/previews/3.mp4',
+  '/videos/previews/4.mp4',
+  '/videos/previews/5.mp4',
+];
+
 const daryaFilimonovaLessons = createStoredLessons({
   courseId: 'word-of-mouth-promotion',
   folder: 'darya-filimonova',
   count: 5,
+  videos: WORD_OF_MOUTH_LESSON_VIDEOS,
   subtitle: 'Урок курса о продвижении с помощью сарафанного радио.',
   tags: ['#маркетинг', '#продвижение'],
   images: [
