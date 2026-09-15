@@ -52,15 +52,91 @@ function PreviewPoster({ course, lesson, onOpen }) {
 
 function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext, unlocked }) {
   const videoRef = useRef(null);
-  const seekingRef = useRef(false);
-  // Some mobile browsers defer fetching even `preload="metadata"` until the
-  // page has real user interaction, so `video.duration` can still be NaN the
-  // moment someone drags the seek bar. Remember the requested position and
-  // apply it once metadata actually arrives, instead of silently no-op'ing.
+  const draggingRef = useRef(false);
+  // Some mobile browsers defer fetching even `preload="metadata"`, so
+  // `video.duration` can still be NaN when someone drags the seek bar.
+  // Remember the requested position and apply it once metadata arrives.
   const pendingSeekRef = useRef(null);
-  const metadataKickedRef = useRef(false);
+  const blobUrlRef = useRef(null);
+  const rangeFallbackRef = useRef(false);
+  const seekCheckRef = useRef({ timer: null, target: 0, ratio: 0 });
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  // Reset per-lesson playback state when the player switches lessons.
+  useEffect(() => {
+    setPlaying(false);
+    setProgress(0);
+    pendingSeekRef.current = null;
+    rangeFallbackRef.current = false;
+    const seekCheck = seekCheckRef.current;
+    return () => {
+      window.clearTimeout(seekCheck.timer);
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    };
+  }, [lesson.video]);
+
+  // A server that answers video requests with 200 instead of 206 makes the
+  // clip unseekable: the browser silently snaps currentTime back to zero, so
+  // the bar looks broken and the lesson restarts. Downloading the file once
+  // and playing it from a blob URL restores seeking whatever the host does.
+  const loadSeekableCopy = async (ratio) => {
+    const video = videoRef.current;
+    if (!video || !lesson.video) return;
+    const wasPlaying = !video.paused;
+    try {
+      const response = await fetch(lesson.video);
+      if (!response.ok) return;
+      const url = URL.createObjectURL(await response.blob());
+      blobUrlRef.current = url;
+      video.addEventListener(
+        'loadedmetadata',
+        () => {
+          const { duration } = video;
+          if (Number.isFinite(duration) && duration > 0) {
+            video.currentTime = Math.min(ratio * duration, Math.max(duration - 0.25, 0));
+          }
+          if (wasPlaying) video.play().catch(() => {});
+        },
+        { once: true },
+      );
+      video.src = url;
+      video.load();
+    } catch {
+      // Offline or blocked by CORS — keep the streamed source as it was.
+    }
+  };
+
+  const seekTo = (ratio) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const { duration } = video;
+    if (!Number.isFinite(duration) || duration <= 0) {
+      pendingSeekRef.current = ratio;
+      return;
+    }
+    pendingSeekRef.current = null;
+    // Stay clear of the very end, otherwise dragging to the right edge fires
+    // `ended` immediately and the lesson looks like it jumped back to zero.
+    const target = Math.min(ratio * duration, Math.max(duration - 0.25, 0));
+    video.currentTime = target;
+
+    // Verify only the final position of a drag: checking every intermediate
+    // step would mistake "the visitor kept dragging" for "the seek failed".
+    if (rangeFallbackRef.current) return;
+    const check = seekCheckRef.current;
+    check.target = target;
+    check.ratio = ratio;
+    window.clearTimeout(check.timer);
+    check.timer = window.setTimeout(() => {
+      const current = videoRef.current;
+      if (!current || rangeFallbackRef.current || draggingRef.current) return;
+      if (Math.abs(current.currentTime - check.target) < 1.5) return;
+      rangeFallbackRef.current = true;
+      loadSeekableCopy(check.ratio);
+    }, 700);
+  };
 
   const startVideo = () => {
     const video = videoRef.current;
@@ -89,18 +165,15 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
         .askhow-video-progress::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 14px;
-          height: 14px;
-          margin-top: -4.5px;
+          width: 16px;
+          height: 16px;
+          margin-top: -5.5px;
           border: 0;
           border-radius: 9999px;
           background: #fff;
-          box-shadow: 0 1px 5px rgba(0,0,0,.25);
-          opacity: 0;
+          box-shadow: 0 1px 6px rgba(0,0,0,.35);
         }
-        .askhow-video-progress:focus::-webkit-slider-thumb,
-        .askhow-video-progress:active::-webkit-slider-thumb,
-        .askhow-video-progress:hover::-webkit-slider-thumb { opacity: 1; }
+        .askhow-video-progress:active::-webkit-slider-thumb { transform: scale(1.15); }
         .askhow-video-progress::-moz-range-track {
           height: 5px;
           border-radius: 9999px;
@@ -112,17 +185,13 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
           background: #fff;
         }
         .askhow-video-progress::-moz-range-thumb {
-          width: 14px;
-          height: 14px;
+          width: 16px;
+          height: 16px;
           border: 0;
           border-radius: 9999px;
           background: #fff;
-          box-shadow: 0 1px 5px rgba(0,0,0,.25);
-          opacity: 0;
+          box-shadow: 0 1px 6px rgba(0,0,0,.35);
         }
-        .askhow-video-progress:focus::-moz-range-thumb,
-        .askhow-video-progress:active::-moz-range-thumb,
-        .askhow-video-progress:hover::-moz-range-thumb { opacity: 1; }
       `}</style>
       <video
         ref={videoRef}
@@ -138,22 +207,24 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
           onPlay();
         }}
         onPause={() => setPlaying(false)}
-        onLoadedMetadata={(event) => {
+        onLoadedMetadata={() => {
           if (pendingSeekRef.current == null) return;
-          const video = event.currentTarget;
-          if (Number.isFinite(video.duration) && video.duration > 0) {
-            video.currentTime = Math.min(pendingSeekRef.current * video.duration, Math.max(video.duration - 0.05, 0));
-          }
-          pendingSeekRef.current = null;
+          seekTo(pendingSeekRef.current);
         }}
         onTimeUpdate={(event) => {
-          if (seekingRef.current) return;
-          const { currentTime, duration } = event.currentTarget;
-          setProgress(duration ? Math.min(currentTime / duration, 1) : 0);
+          const video = event.currentTarget;
+          // While the visitor drags — or while the element is still settling on
+          // a seek — the bar must keep showing where they put it. Writing the
+          // element's own (stale) time back here is what used to yank the
+          // slider, and with it the playhead, back to the start.
+          if (draggingRef.current || video.seeking) return;
+          const { currentTime, duration } = video;
+          if (!Number.isFinite(duration) || duration <= 0) return;
+          setProgress(Math.min(currentTime / duration, 1));
         }}
         onEnded={() => {
           setPlaying(false);
-          setProgress(0);
+          setProgress(1);
           onEnded();
         }}
       />
@@ -170,32 +241,21 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
           value={Math.round(progress * 1000)}
           onPointerDown={(event) => {
             event.stopPropagation();
-            seekingRef.current = true;
+            draggingRef.current = true;
+            // Keep receiving the move/up events even if the finger slides off
+            // the bar, so the drag never ends half-way in an unknown state.
+            event.currentTarget.setPointerCapture?.(event.pointerId);
           }}
-          onPointerUp={() => { seekingRef.current = false; }}
-          onPointerCancel={() => { seekingRef.current = false; }}
-          onBlur={() => { seekingRef.current = false; }}
+          onPointerUp={() => { draggingRef.current = false; }}
+          onPointerCancel={() => { draggingRef.current = false; }}
           onClick={(event) => event.stopPropagation()}
           onChange={(event) => {
             const nextProgress = Number(event.currentTarget.value) / 1000;
             setProgress(nextProgress);
-            const video = videoRef.current;
-            if (video && Number.isFinite(video.duration) && video.duration > 0) {
-              video.currentTime = Math.min(nextProgress * video.duration, Math.max(video.duration - 0.05, 0));
-              pendingSeekRef.current = null;
-              return;
-            }
-            // Duration isn't known yet — remember the target and, if the
-            // browser never started fetching the file, kick it off once so
-            // metadata actually arrives (a common mobile data-saver quirk).
-            pendingSeekRef.current = nextProgress;
-            if (video && !metadataKickedRef.current && video.readyState === 0) {
-              metadataKickedRef.current = true;
-              video.load();
-            }
+            seekTo(nextProgress);
           }}
           aria-label="Прогресс просмотра видео"
-          className="askhow-video-progress h-[18px] w-full cursor-pointer touch-none select-none appearance-none bg-transparent"
+          className="askhow-video-progress h-[26px] w-full cursor-pointer touch-none select-none appearance-none bg-transparent"
           style={{ '--video-progress': `${progress * 100}%` }}
         />
       </div>
@@ -251,6 +311,39 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext
           </button>
         </div>
       )}
+    </article>
+  );
+}
+
+// An unlocked free lesson whose video file has not been uploaded yet: show the
+// lesson itself instead of bouncing the visitor back into the lead form.
+function LessonComingSoon({ lesson, onNext, hasNext }) {
+  return (
+    <article className="relative aspect-[512/1000] w-full overflow-hidden rounded-[26px] bg-[#1b1b1b] shadow-[0_18px_48px_rgba(0,0,0,.16)]">
+      <img src={lesson.image || lesson.poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
+      <span className="pointer-events-none absolute inset-0 bg-black/45" />
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+
+      <span className="pointer-events-none absolute left-[4.2%] top-[2.4%] z-20 rounded-[5px] bg-[#22c55e] px-3 py-1.5 text-[12px] font-medium leading-none text-white sm:text-[13px]">Открыт</span>
+
+      {hasNext && (
+        <button
+          type="button"
+          onClick={onNext}
+          className="absolute right-[4.2%] top-[2.4%] z-40 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-semibold text-[#181818] shadow-[0_6px_18px_rgba(0,0,0,.25)] backdrop-blur transition hover:bg-white sm:text-[11px]"
+        >
+          Смотреть следующий урок
+          <ChevronRight size={13} />
+        </button>
+      )}
+
+      <div className="absolute inset-x-[8.4%] bottom-[4.5%] z-20 text-white">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium backdrop-blur">
+          <Clock3 size={13} /> Видео скоро появится
+        </span>
+        <h3 className="mt-4 text-[18px] font-semibold leading-[1.22] tracking-[-.01em] sm:text-[20px]">{lesson.title}</h3>
+        {lesson.subtitle && <p className="mt-3 line-clamp-3 text-[12px] leading-[1.48] text-white/95 sm:text-[13px]">{lesson.subtitle}</p>}
+      </div>
     </article>
   );
 }
@@ -426,10 +519,7 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   const previewLesson = lessons.find((lesson) => lesson.featured) || lessons[0] || null;
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) || previewLesson;
   const activeLessonIndex = activeLesson ? lessons.findIndex((lesson) => lesson.id === activeLesson.id) : -1;
-  // Only a lesson with an actual video is a valid "next lesson" — most of the
-  // catalog only ships one preview video per course today, so this correctly
-  // hides the button until there is really something else to switch to.
-  const nextLesson = activeLessonIndex >= 0 ? lessons.slice(activeLessonIndex + 1).find((lesson) => lesson.video) || null : null;
+  const nextLesson = activeLessonIndex >= 0 ? lessons[activeLessonIndex + 1] || null : null;
   const visibleLessons = lessonsExpanded ? lessons : lessons.slice(0, 6);
   const { setCourseCta } = useAppContext();
 
@@ -504,12 +594,18 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     window.requestAnimationFrame(() => programRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
+  const showLessonInPlayer = (lesson) => {
+    setActiveLessonId(lesson.id);
+    if (lesson.url && !lesson.video) window.open(lesson.url, '_blank', 'noopener,noreferrer');
+    else openPreview();
+  };
+
   const openLesson = (lesson) => {
-    if ((isFreeCourse || lesson.free) && (lesson.video || lesson.url)) {
-      requestVideoAccess('lesson_video', () => {
-        if (lesson.url && !lesson.video) window.open(lesson.url, '_blank', 'noopener,noreferrer');
-        else openPreview();
-      });
+    // A free course is free: the lead form is the only gate, and once it has
+    // been filled in every lesson opens straight in the player — including
+    // lessons whose video file is not uploaded yet.
+    if (isFreeCourse || lesson.free) {
+      requestVideoAccess('lesson_video', () => showLessonInPlayer(lesson));
       return;
     }
     openPayment('locked_lesson_video');
@@ -521,8 +617,7 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     // The lesson is already unlocked (this button only shows once it is), so
     // this just switches the player — never the lead/payment form.
     trackEvent('next_lesson_click', { course_id: course.id, lesson_id: nextLesson.id });
-    setActiveLessonId(nextLesson.id);
-    openPreview();
+    showLessonInPlayer(nextLesson);
   };
 
   const handlePreviewPlay = () => {
@@ -591,6 +686,8 @@ export function CoursePage({ course, author, onOpenAuthor }) {
                     hasNext={Boolean(nextLesson)}
                     unlocked={isFreeCourse && leadCaptured}
                   />
+                ) : isFreeCourse && leadCaptured ? (
+                  <LessonComingSoon lesson={activeLesson} onNext={goToNextLesson} hasNext={Boolean(nextLesson)} />
                 ) : (
                   <LessonCard lesson={activeLesson} course={course} variant="player" onOpen={() => openLesson(activeLesson)} unlocked={isFreeCourse && leadCaptured} />
                 )}

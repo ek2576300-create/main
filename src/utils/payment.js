@@ -100,6 +100,72 @@ function markCourseUnlocked(courseId) {
   }
 }
 
+const PENDING_LEADS_KEY = 'askhow-pending-leads';
+
+async function postLead(payload, idempotencyKey) {
+  const response = await fetch(LEAD_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Lead request failed with status ${response.status}`);
+  }
+}
+
+function rememberLeadSaved(leadKey) {
+  try {
+    localStorage.setItem(leadKey, 'saved');
+  } catch {
+    // The successful server response is authoritative.
+  }
+}
+
+function readPendingLeads() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PENDING_LEADS_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function queuePendingLead(payload, idempotencyKey) {
+  try {
+    const queue = readPendingLeads();
+    localStorage.setItem(PENDING_LEADS_KEY, JSON.stringify([...queue.slice(-19), { payload, idempotencyKey }]));
+  } catch {
+    // Nothing else we can do — the visitor still gets their free access.
+  }
+}
+
+// Leads that could not reach the backend are retried on the next page load,
+// so an outage costs delivery time instead of the lead itself.
+export async function flushPendingLeads() {
+  const queue = readPendingLeads();
+  if (queue.length === 0) return;
+
+  const failed = [];
+  for (const item of queue) {
+    try {
+      await postLead(item.payload, item.idempotencyKey);
+    } catch {
+      failed.push(item);
+    }
+  }
+
+  try {
+    if (failed.length) localStorage.setItem(PENDING_LEADS_KEY, JSON.stringify(failed));
+    else localStorage.removeItem(PENDING_LEADS_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export async function savePaymentLead({ course, name, email, source = 'catalog', allowResubmit = false }) {
   const leadKey = getLeadKey(course.id, email);
 
@@ -137,26 +203,24 @@ export async function savePaymentLead({ course, name, email, source = 'catalog',
     idempotency_key: idempotencyKey,
   };
 
-  const response = await fetch(LEAD_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Idempotency-Key': idempotencyKey,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Lead request failed with status ${response.status}`);
-  }
+  const isFree = course.price === 'Бесплатно';
 
   try {
-    localStorage.setItem(leadKey, 'saved');
-  } catch {
-    // The successful server response is authoritative.
+    await postLead(payload, idempotencyKey);
+  } catch (error) {
+    // A paid course must not send anyone to checkout before the lead is
+    // stored. A free one is different: the form is only a soft gate, so a
+    // backend hiccup must never leave the visitor locked out of free
+    // content — open it, keep the lead locally and retry it later.
+    if (!isFree) throw error;
+    queuePendingLead(payload, idempotencyKey);
+    rememberLeadSaved(leadKey);
+    markCourseUnlocked(course.id);
+    return { ok: true, duplicate: false, delivered: false };
   }
 
-  if (course.price === 'Бесплатно') markCourseUnlocked(course.id);
+  rememberLeadSaved(leadKey);
+  if (isFree) markCourseUnlocked(course.id);
 
-  return { ok: true, duplicate: false };
+  return { ok: true, duplicate: false, delivered: true };
 }
