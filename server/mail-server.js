@@ -91,11 +91,60 @@ function escapeHtml(value) {
   })[char]);
 }
 
-// Shared chrome so every outgoing email looks like it came from the same
-// product: a yellow AskHow header, an optional accent strip under it, a card
-// body, and Telegram/MAX links in the footer so recipients always have a way
-// to reach us.
-function renderEmailShell({ preheader = '', title, eyebrow = '', bodyHtml }) {
+const MAIL_TEMPLATE_VERSION = '2026-09-15-minimal';
+const FONT_STACK = "'Manrope',Arial,Helvetica,sans-serif";
+
+function formatMoscowTime(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${date.toLocaleString('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })} МСК`;
+}
+
+// Rows of a summary card: the same "label on the left, value on the right"
+// list the thank-you page shows.
+function renderSummaryRows(rows) {
+  return rows
+    .filter(([, value]) => value)
+    .map(
+      ([label, value], index) => `
+        <tr>
+          <td style="padding:11px 15px;font-size:12px;color:#999999;${index ? 'border-top:1px solid #f2f2f2;' : ''}">${escapeHtml(label)}</td>
+          <td align="right" style="padding:11px 15px;font-size:12px;font-weight:600;color:#181818;${index ? 'border-top:1px solid #f2f2f2;' : ''}">${escapeHtml(value)}</td>
+        </tr>`,
+    )
+    .join('');
+}
+
+// Numbered steps, same as the thank-you page.
+function renderSteps(steps) {
+  return steps
+    .map(
+      ([number, title, text], index) => `
+        <tr>
+          <td width="21" valign="top" style="padding:${index ? '13px' : '0'} 0 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td width="21" height="21" align="center" valign="middle" style="width:21px;height:21px;border-radius:999px;background:#f7f7f7;font-size:10px;font-weight:700;color:#888888;">${number}</td>
+            </tr></table>
+          </td>
+          <td valign="top" style="padding:${index ? '13px' : '0'} 0 0 11px;">
+            <div style="font-size:12px;font-weight:600;color:#181818;">${escapeHtml(title)}</div>
+            <div style="margin-top:2px;font-size:11px;line-height:1.5;color:#888888;">${escapeHtml(text)}</div>
+          </td>
+        </tr>`,
+    )
+    .join('');
+}
+
+// Shared chrome, deliberately plain so every email reads like the site: a
+// white card with hairline borders, the AskHow wordmark, and quiet grey type.
+function renderEmailShell({ preheader = '', title, bodyHtml }) {
   return `<!doctype html>
 <html lang="ru">
   <head>
@@ -103,33 +152,27 @@ function renderEmailShell({ preheader = '', title, eyebrow = '', bodyHtml }) {
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>${escapeHtml(title)}</title>
   </head>
-  <body style="margin:0;padding:0;background:#f3f4f2;font-family:Arial,Helvetica,sans-serif;">
-    <span style="display:none;font-size:1px;color:#f3f4f2;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</span>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f2;padding:28px 12px;">
+  <body style="margin:0;padding:0;background:#ffffff;font-family:${FONT_STACK};">
+    <span style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</span>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;padding:20px 14px 40px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:22px;overflow:hidden;box-shadow:0 20px 55px rgba(0,0,0,.09);">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #ececec;border-radius:24px;">
             <tr>
-              <td style="background:linear-gradient(135deg,#ffe14d,#ffdc00);padding:24px 28px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <td align="center" style="padding:36px 28px 30px;color:#181818;">
+                <div style="font-size:21px;font-weight:800;letter-spacing:-1.2px;color:#181818;">askhow</div>
+                ${bodyHtml}
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px auto 0;">
                   <tr>
-                    <td style="font-size:20px;font-weight:900;letter-spacing:-1px;color:#111;">🎓 AskHow</td>
-                    ${eyebrow ? `<td align="right" style="font-size:11px;font-weight:700;color:#6b5900;">${eyebrow}</td>` : ''}
+                    <td style="padding-right:8px;">
+                      <a href="${TELEGRAM_URL}" style="display:inline-block;padding:8px 14px;border-radius:999px;background:#f7f7f7;color:#555555;font-size:11px;font-weight:600;text-decoration:none;">Telegram</a>
+                    </td>
+                    <td>
+                      <a href="${MAX_SUPPORT_URL}" style="display:inline-block;padding:8px 14px;border-radius:999px;background:#f7f7f7;color:#555555;font-size:11px;font-weight:600;text-decoration:none;">MAX</a>
+                    </td>
                   </tr>
                 </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:32px 28px 28px;color:#181818;">
-                ${bodyHtml}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:22px 28px 28px;border-top:1px solid #ececec;background:#fafafa;">
-                <p style="margin:0 0 14px;font-size:12px;line-height:1.6;color:#777;">Мы на связи и рады помочь с любыми вопросами.</p>
-                <a href="${TELEGRAM_URL}" style="display:inline-block;margin:0 10px 10px 0;padding:11px 18px;border-radius:999px;background:#111;color:#ffffff;font-size:12px;font-weight:700;text-decoration:none;">✈️ Канал в Telegram</a>
-                <a href="${MAX_SUPPORT_URL}" style="display:inline-block;margin:0 10px 10px 0;padding:11px 18px;border-radius:999px;background:#ffffff;border:1px solid #e2e2e2;color:#111;font-size:12px;font-weight:700;text-decoration:none;">💬 Поддержка в MAX</a>
-                <p style="margin:16px 0 0;font-size:10px;line-height:1.6;color:#aaa;">ООО «АСКХАУ» · <a href="${SITE_URL}" style="color:#aaa;">${SITE_URL.replace('https://', '')}</a></p>
+                <p style="margin:22px 0 0;font-size:10px;line-height:1.6;color:#b5b5b5;">ООО «АСКХАУ» · ИНН 1655479795 · <a href="${SITE_URL}" style="color:#b5b5b5;text-decoration:none;">${SITE_URL.replace('https://', '')}</a></p>
               </td>
             </tr>
           </table>
@@ -143,52 +186,52 @@ function renderEmailShell({ preheader = '', title, eyebrow = '', bodyHtml }) {
 function buildEmail(lead) {
   const isFree = !lead.price || lead.price === 'Бесплатно';
   const rows = [
-    ['👤', 'Имя', lead.name],
-    ['📧', 'Email', lead.email],
-    ['📚', 'Курс', lead.course_title || lead.course_id || '—'],
-    ['💰', 'Цена', isFree ? 'Бесплатно' : `${lead.price ?? '—'} ${lead.currency || ''}`.trim()],
-    ['🔗', 'Источник', lead.source || '—'],
-    ['📝', 'Форма', lead.form_name || lead.form_id || '—'],
-    ['🌐', 'Страница', lead.page_url || '—'],
-    ['🕒', 'Время', lead.received_at || lead.time || new Date().toISOString()],
+    ['Имя', lead.name],
+    ['E-mail', lead.email],
+    ['Курс', lead.course_title || lead.course_id || '—'],
+    ['Цена', isFree ? 'Бесплатно' : `${lead.price ?? '—'} ${lead.currency || ''}`.trim()],
+    ['Источник', lead.source || '—'],
+    ['Форма', lead.form_name || lead.form_id || '—'],
+    ['Страница', lead.page_url || '—'],
+    ['Время', formatMoscowTime(lead.received_at || lead.time)],
   ];
 
-  const badges = [
-    isFree
-      ? '<span style="display:inline-block;margin:0 8px 8px 0;padding:5px 12px;border-radius:999px;background:#e8f9ef;color:#1c7a3f;font-size:11px;font-weight:700;">🆓 Бесплатный курс</span>'
-      : '<span style="display:inline-block;margin:0 8px 8px 0;padding:5px 12px;border-radius:999px;background:#fff6cf;color:#8a6d00;font-size:11px;font-weight:700;">💳 Платный курс</span>',
-    lead.repeat_lead
-      ? '<span style="display:inline-block;margin:0 8px 8px 0;padding:5px 12px;border-radius:999px;background:#edf7ff;color:#1683ff;font-size:11px;font-weight:700;">🔁 Повторная заявка (рассылка)</span>'
-      : '',
-  ]
-    .filter(Boolean)
-    .join('');
+  const note = lead.repeat_lead
+    ? '<p style="margin:10px 0 0;font-size:11px;color:#888888;">Повторная заявка — человек уже оставлял данные по этому курсу.</p>'
+    : '';
 
   const bodyHtml = `
-    <h1 style="margin:0 0 6px;font-size:21px;line-height:1.3;">📩 Новая заявка на сайте</h1>
-    <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#777;">Кто-то только что оставил заявку в каталоге AskHow.</p>
-    <div style="margin:0 0 18px;">${badges}</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;line-height:1.6;background:#fafafa;border-radius:14px;">
-      ${rows
-        .map(
-          ([icon, label, value]) => `
-        <tr>
-          <td style="padding:9px 0 9px 16px;width:26px;vertical-align:top;">${icon}</td>
-          <td style="padding:9px 8px;color:#888;width:100px;vertical-align:top;">${escapeHtml(label)}</td>
-          <td style="padding:9px 16px 9px 0;color:#181818;font-weight:600;">${escapeHtml(value)}</td>
-        </tr>`,
-        )
-        .join('')}
+    <h1 style="margin:22px 0 0;font-size:26px;font-weight:600;line-height:1.15;letter-spacing:-0.03em;color:#181818;">Новая заявка</h1>
+    <p style="margin:10px auto 0;max-width:380px;font-size:12px;line-height:1.7;color:#777777;">${escapeHtml(
+      isFree ? 'Заявка на бесплатный курс в каталоге AskHow.' : 'Заявка перед оплатой курса в каталоге AskHow.',
+    )}</p>
+    ${note}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0;border:1px solid #ececec;border-radius:15px;text-align:left;">
+      ${renderSummaryRows(rows)}
     </table>
-    <a href="${SITE_URL}/admin/leads" style="display:inline-block;margin-top:20px;padding:13px 24px;border-radius:999px;background:#ffdc00;color:#111;font-size:13px;font-weight:700;text-decoration:none;">Открыть заявки в админке →</a>`;
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto 0;">
+      <tr>
+        <td align="center" style="border-radius:999px;background:#ffdc00;">
+          <a href="${SITE_URL}/admin/leads" style="display:inline-block;padding:14px 26px;font-size:12px;font-weight:600;color:#181818;text-decoration:none;">Открыть заявки в админке</a>
+        </td>
+      </tr>
+    </table>`;
 
   return {
-    subject: `📩 Новая заявка: ${lead.course_title || lead.course_id || 'без курса'}`,
-    text: rows.map(([icon, label, value]) => `${icon} ${label}: ${value}`).join('\n'),
+    subject: `Новая заявка: ${lead.course_title || lead.course_id || 'без курса'}`,
+    text: [
+      'Новая заявка',
+      '',
+      ...rows.map(([label, value]) => `${label}: ${value}`),
+      lead.repeat_lead ? '\nПовторная заявка — человек уже оставлял данные по этому курсу.' : '',
+      '',
+      `Заявки: ${SITE_URL}/admin/leads`,
+    ]
+      .filter(Boolean)
+      .join('\n'),
     html: renderEmailShell({
       title: 'Новая заявка — AskHow',
-      preheader: `Новая заявка от ${lead.name || lead.email}`,
-      eyebrow: isFree ? 'Бесплатный курс' : 'Платный курс',
+      preheader: `${lead.name || lead.email} · ${lead.course_title || lead.course_id || 'без курса'}`,
       bodyHtml,
     }),
   };
@@ -200,85 +243,58 @@ function buildThankYouEmail(lead) {
   const priceLine = lead.price ? `${lead.price} ${lead.currency || ''}`.trim() : null;
 
   const steps = [
-    ['1', 'Оплата получена', 'Мы уже видим вашу оплату в системе — всё прошло успешно.'],
-    ['2', 'Готовим доступ', 'В ближайшее время пришлём на этот e-mail всё необходимое для начала обучения.'],
-    ['3', 'Учитесь в своём темпе', 'Возвращайтесь в каталог в любое удобное время — курс уже открыт для вас.'],
+    ['1', 'Оплата получена', 'Платёж уже отражён в системе.'],
+    ['2', 'Письмо с доступом', 'Придёт на этот e-mail в ближайшее время.'],
+    ['3', 'Можно учиться', 'Курс открыт — возвращайтесь в каталог в любое время.'],
   ];
 
+  // Mirrors public/thanks.html so the letter and the page read as one thing.
   const bodyHtml = `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto 0;">
       <tr>
-        <td align="center" style="padding-bottom:6px;">
-          <div style="display:inline-block;width:56px;height:56px;border-radius:999px;background:linear-gradient(135deg,#34d979,#1fb45f);color:#ffffff;font-size:26px;line-height:56px;text-align:center;">✓</div>
-        </td>
+        <td width="44" height="44" align="center" valign="middle" style="width:44px;height:44px;border-radius:999px;background:#22c55e;font-size:22px;line-height:44px;color:#ffffff;">&#10003;</td>
       </tr>
     </table>
-    <h1 style="margin:16px 0 0;font-size:24px;line-height:1.3;text-align:center;">🎉 ${escapeHtml(greeting)}</h1>
-    <p style="margin:12px auto 0;max-width:420px;font-size:14px;line-height:1.6;color:#333;text-align:center;">
-      Спасибо за оплату курса «<strong>${escapeHtml(courseTitle)}</strong>».
+    <h1 style="margin:18px 0 0;font-size:31px;font-weight:600;line-height:1.1;letter-spacing:-0.035em;color:#181818;">Спасибо!</h1>
+    <p style="margin:10px auto 0;max-width:380px;font-size:12px;line-height:1.7;color:#777777;">
+      ${escapeHtml(greeting)} Оплата курса «${escapeHtml(courseTitle)}» прошла успешно. Информацию о доступе отправим на этот e-mail.
     </p>
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0;background:#f7faf8;border:1px solid #e4f3ea;border-radius:16px;">
-      <tr>
-        <td style="padding:16px 18px;font-size:13px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding:5px 0;color:#888;">📚 Курс</td>
-              <td align="right" style="padding:5px 0;font-weight:700;">${escapeHtml(courseTitle)}</td>
-            </tr>
-            ${
-              priceLine
-                ? `<tr><td style="padding:5px 0;color:#888;border-top:1px dashed #dfe8e2;">💳 Оплачено</td><td align="right" style="padding:5px 0;font-weight:700;border-top:1px dashed #dfe8e2;">${escapeHtml(priceLine)}</td></tr>`
-                : ''
-            }
-            <tr>
-              <td style="padding:5px 0;color:#888;border-top:1px dashed #dfe8e2;">📧 E-mail</td>
-              <td align="right" style="padding:5px 0;font-weight:700;border-top:1px dashed #dfe8e2;">${escapeHtml(lead.email || '—')}</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0;border:1px solid #ececec;border-radius:15px;text-align:left;">
+      ${renderSummaryRows([
+        ['Курс', courseTitle],
+        ['Оплачено', priceLine],
+        ['E-mail', lead.email],
+      ])}
     </table>
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0;">
-      ${steps
-        .map(
-          ([n, title, text]) => `
-        <tr>
-          <td style="padding:8px 0;vertical-align:top;width:34px;">
-            <div style="width:26px;height:26px;border-radius:999px;background:#fff6cf;color:#8a6d00;font-size:12px;font-weight:800;line-height:26px;text-align:center;">${n}</div>
-          </td>
-          <td style="padding:8px 0 8px 10px;vertical-align:top;">
-            <p style="margin:0;font-size:13px;font-weight:700;color:#111;">${escapeHtml(title)}</p>
-            <p style="margin:2px 0 0;font-size:12px;line-height:1.55;color:#666;">${escapeHtml(text)}</p>
-          </td>
-        </tr>`,
-        )
-        .join('')}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0;text-align:left;">
+      ${renderSteps(steps)}
     </table>
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto 0;">
       <tr>
-        <td align="center">
-          <a href="${SITE_URL}" style="display:inline-block;padding:14px 28px;border-radius:999px;background:#ffdc00;color:#111;font-size:13px;font-weight:700;text-decoration:none;">🎓 Перейти в каталог</a>
+        <td align="center" style="border-radius:999px;background:#ffdc00;">
+          <a href="${SITE_URL}" style="display:inline-block;padding:14px 26px;font-size:12px;font-weight:600;color:#181818;text-decoration:none;">Вернуться в каталог</a>
         </td>
       </tr>
     </table>`;
 
   return {
-    subject: `🎉 Спасибо за оплату — ${courseTitle}`.slice(0, 180),
+    subject: `Спасибо за оплату — ${courseTitle}`.slice(0, 180),
     text: [
       greeting,
       '',
-      `Спасибо за оплату курса «${courseTitle}».`,
+      `Оплата курса «${courseTitle}» прошла успешно.`,
       priceLine ? `Оплачено: ${priceLine}` : null,
       '',
-      '1) Оплата получена — мы уже видим её в системе.',
-      '2) Готовим доступ — пришлём детали на этот e-mail в ближайшее время.',
-      '3) Учитесь в своём темпе — курс уже открыт в каталоге.',
+      '1. Оплата получена — платёж уже отражён в системе.',
+      '2. Письмо с доступом — придёт на этот e-mail в ближайшее время.',
+      '3. Можно учиться — курс открыт в каталоге.',
       '',
-      `Канал в Telegram: ${TELEGRAM_URL}`,
-      `Поддержка в MAX: ${MAX_SUPPORT_URL}`,
+      `Каталог: ${SITE_URL}`,
+      `Telegram: ${TELEGRAM_URL}`,
+      `MAX: ${MAX_SUPPORT_URL}`,
       '',
       'Команда AskHow',
     ]
@@ -286,8 +302,7 @@ function buildThankYouEmail(lead) {
       .join('\n'),
     html: renderEmailShell({
       title: 'Спасибо за оплату — AskHow',
-      preheader: `Спасибо за оплату курса «${courseTitle}»`,
-      eyebrow: 'Оплата подтверждена',
+      preheader: `Оплата курса «${courseTitle}» прошла успешно`,
       bodyHtml,
     }),
   };
@@ -363,7 +378,9 @@ const server = createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ ok: true, service: 'mail-server' }));
+    // `templates` tells at a glance whether the running process already has
+    // the current email layout, without having to send a test letter.
+    res.end(JSON.stringify({ ok: true, service: 'mail-server', templates: MAIL_TEMPLATE_VERSION }));
     return;
   }
 
