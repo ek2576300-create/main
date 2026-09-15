@@ -1,13 +1,8 @@
-import { MessageCircle, Send } from 'lucide-react';
 import { useAppContext } from '../../app/AppContext';
 import { CookieConsent } from './CookieConsent';
 
 const TELEGRAM_URL = 'https://t.me/+J1XU4RVIVQM1NjBi';
 const MAX_URL = 'https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc';
-
-const SOCIAL_LINKS = [
-  { key: 'tg', label: 'Telegram', href: TELEGRAM_URL, icon: Send },
-];
 
 const BANK_SERVICES = [
   { label: 'Альфа-Клик', src: '/images/payments/alfa-bank.webp' },
@@ -106,26 +101,19 @@ export function SiteFooter() {
   <p className="mt-3 text-[10px]">+7(929)734-55-00</p>
 
   <div className="mt-6 flex flex-wrap gap-3">
-    {SOCIAL_LINKS.map(({ key, label, href, icon: Icon }) => (
-      <a
-        href={href}
-        key={key}
-        target={href.startsWith('http') ? '_blank' : undefined}
-        rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-        className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[#181818] transition hover:bg-[#f0f0f0]"
-        aria-label={label}
-      >
-        {key === 'telegram' || key === 'tg' ? (
-          <img
-            src="/tg.svg"
-            alt={label}
-            className="h-5 w-5 object-contain"
-          />
-        ) : (
-          <Icon size={16} />
-        )}
-      </a>
-    ))}
+    <a
+      href={TELEGRAM_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[#181818] transition hover:bg-[#f0f0f0]"
+      aria-label="Telegram"
+    >
+      <img
+        src="/tg.svg"
+        alt="Telegram"
+        className="h-5 w-5 object-contain"
+      />
+    </a>
 
     <a
       href={MAX_URL}
