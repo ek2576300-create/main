@@ -376,7 +376,10 @@ const server = createServer(async (req, res) => {
 
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
-  if (req.method === 'GET' && url.pathname === '/health') {
+  // nginx rewrites /mail-api/* to /api/*, so the health check arrives as
+  // /api/health from the outside and as /health from localhost — answer both
+  // (and any other prefix a proxy might add).
+  if (req.method === 'GET' && url.pathname.replace(/\/+$/, '').endsWith('/health')) {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     // `templates` tells at a glance whether the running process already has
     // the current email layout, without having to send a test letter.
