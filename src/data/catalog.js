@@ -436,8 +436,8 @@ const authorsBase = [
     id: 'konstantin-kharsky',
     name: 'Константин Харский',
     role: 'Эксперт по продажам и покупательскому поведению',
-    avatar: '/images/authors/konstantin-kharsky/author.png',
-    cover: '/images/authors/konstantin-kharsky/author.png',
+    avatar: '/images/authors/konstantin-kharsky/author.jpg',
+    cover: '/images/authors/konstantin-kharsky/author.jpg',
     description:
       'Автор курса «Управление покупательскими состояниями. Продажи по-новому» о новом подходе к продажам и состояниях покупателя.',
     tags: ['#продажи', '#покупатель', '#управление'],

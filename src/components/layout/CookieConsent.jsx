@@ -40,7 +40,7 @@ export function CookieConsent() {
           Мы используем файлы cookie, чтобы сайт работал корректно и был удобнее для вас. Продолжая
           пользоваться сайтом, вы соглашаетесь с их использованием в соответствии с{' '}
           <a
-            href="/cookies.html"
+            href="https://www.askhow.ru/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium text-black underline underline-offset-2"

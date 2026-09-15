@@ -1110,12 +1110,12 @@ var public_assets_data_default = {
 		"size": 1500,
 		"path": "../public/images/authors/pavel-semenov/cover.svg"
 	},
-	"/images/authors/konstantin-kharsky/author.png": {
+	"/images/authors/konstantin-kharsky/author.jpg": {
 		"type": "image/png",
 		"etag": "\"e765-foWe/YTamBeMgupP8sePAoHEJXA\"",
 		"mtime": "2026-08-31T04:35:25.251Z",
 		"size": 59237,
-		"path": "../public/images/authors/konstantin-kharsky/author.png"
+		"path": "../public/images/authors/konstantin-kharsky/author.jpg"
 	},
 	"/images/authors/konstantin-kharsky/author.svg": {
 		"type": "image/svg+xml",
@@ -1383,12 +1383,12 @@ var public_assets_data_default = {
 		"size": 1526,
 		"path": "../public/images/catalog/konstantin-kharsky/cover.svg"
 	},
-	"/images/catalog/konstantin-kharsky/author.png": {
+	"/images/catalog/konstantin-kharsky/author.jpg": {
 		"type": "image/png",
 		"etag": "\"e765-foWe/YTamBeMgupP8sePAoHEJXA\"",
 		"mtime": "2026-08-31T04:35:25.252Z",
 		"size": 59237,
-		"path": "../public/images/catalog/konstantin-kharsky/author.png"
+		"path": "../public/images/catalog/konstantin-kharsky/author.jpg"
 	},
 	"/images/catalog/pavel-semenov/author.png": {
 		"type": "image/png",

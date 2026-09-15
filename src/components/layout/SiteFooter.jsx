@@ -7,7 +7,6 @@ const MAX_URL = 'https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc
 
 const SOCIAL_LINKS = [
   { key: 'tg', label: 'Telegram', href: TELEGRAM_URL, icon: Send },
-  { key: 'wa', label: 'WhatsApp', href: '#contacts', icon: MessageCircle },
 ];
 
 const BANK_SERVICES = [
@@ -90,41 +89,60 @@ export function SiteFooter() {
               420111, Республика Татарстан,<br />г. Казань, ул. Университетская, д. 14
             </p>
           </div>
-          <div>
-            <a href="mailto:info@askhow.ru" className="text-[19px] font-semibold">info@askhow.ru</a>
-            <p className="mt-3 text-[10px]">+7(929)734-55-00</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              {SOCIAL_LINKS.map(({ key, label, href, icon: Icon }) => (
-                <a
-                  href={href}
-                  key={key}
-                  target={href.startsWith('http') ? '_blank' : undefined}
-                  rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[#181818] transition hover:bg-[#f0f0f0]"
-                  aria-label={label}
-                >
-                  <Icon size={16} />
-                </a>
-              ))}
-              <a
-                href="#contacts"
-                className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[10px] font-bold tracking-tight"
-                aria-label="VK"
-              >
-                VK
-              </a>
-              <a
-                href={MAX_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="grid h-10 min-w-10 place-items-center rounded-full bg-[#f8f9fa] px-3 text-[9px] font-semibold"
-                aria-label="Открыть AskHow в MAX"
-              >
-                MAX
-              </a>
-            </div>
-            <a href="#contacts" className="mt-8 block text-[9px]">Контакты</a>
-          </div>
+        <div>
+  <a
+    href="#contacts"
+    className="mt-10 block text-[9px]"
+  >
+    Контакты
+  </a>
+  <a
+    href="mailto:info@askhow.ru"
+    className="text-[19px] font-semibold"
+  >
+    info@askhow.ru
+  </a>
+
+  <p className="mt-3 text-[10px]">+7(929)734-55-00</p>
+
+  <div className="mt-6 flex flex-wrap gap-3">
+    {SOCIAL_LINKS.map(({ key, label, href, icon: Icon }) => (
+      <a
+        href={href}
+        key={key}
+        target={href.startsWith('http') ? '_blank' : undefined}
+        rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+        className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[#181818] transition hover:bg-[#f0f0f0]"
+        aria-label={label}
+      >
+        {key === 'telegram' || key === 'tg' ? (
+          <img
+            src="/tg.svg"
+            alt={label}
+            className="h-5 w-5 object-contain"
+          />
+        ) : (
+          <Icon size={16} />
+        )}
+      </a>
+    ))}
+
+    <a
+      href={MAX_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] transition hover:bg-[#f0f0f0]"
+      aria-label="Открыть AskHow в MAX"
+    >
+      <img
+        src="/max.svg"
+        alt="MAX"
+        className="h-5 w-5 object-contain"
+      />
+    </a>
+  </div>
+
+</div>
           <div className="flex flex-col items-start sm:col-span-2 lg:col-span-1 lg:items-end">
             <button
               type="button"
@@ -155,7 +173,11 @@ export function SiteFooter() {
               </div>
               <div className="text-left lg:text-right">
                 <p className="text-[8px]">Powered by</p>
-                <div className="mt-1 text-[18px] font-semibold text-[#d9b33d]">NAAN</div>
+                <img
+  src="/nan.webp"
+  alt="NAAN"
+  className="mt-1 h-[48px] w-auto object-contain"
+/>
               </div>
             </div>
             <div className="mt-auto flex max-w-[340px] flex-wrap gap-x-6 gap-y-3 pt-9 text-[8px] lg:justify-end lg:text-right">
