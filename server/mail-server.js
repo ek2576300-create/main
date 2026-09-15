@@ -97,14 +97,41 @@ const FONT_STACK = "'Manrope',Arial,Helvetica,sans-serif";
 function formatMoscowTime(value) {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return String(value);
-  return `${date.toLocaleString('ru-RU', {
-    timeZone: 'Europe/Moscow',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })} МСК`;
+  try {
+    return `${date.toLocaleString('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })} МСК`;
+  } catch {
+    // Node built without full ICU throws on a named time zone — format the
+    // +03:00 offset by hand rather than lose the whole email over a date.
+    const moscow = new Date(date.getTime() + 3 * 60 * 60 * 1000);
+    const pad = (part) => String(part).padStart(2, '0');
+    return `${pad(moscow.getUTCDate())}.${pad(moscow.getUTCMonth() + 1)}.${moscow.getUTCFullYear()}, ${pad(
+      moscow.getUTCHours(),
+    )}:${pad(moscow.getUTCMinutes())} МСК`;
+  }
+}
+
+// Building a letter must never take the request down with it: a template
+// error is logged and the endpoint still answers the visitor.
+function sendMail(kind, build, envelope) {
+  let letter;
+  try {
+    letter = build();
+  } catch (error) {
+    console.error(`${kind} template error:`, error.message);
+    return;
+  }
+
+  transporter
+    .sendMail({ ...envelope, subject: letter.subject, text: letter.text, html: letter.html })
+    .then((info) => console.log(`${kind} delivered:`, info.messageId))
+    .catch((error) => console.error(`${kind} error:`, error.message));
 }
 
 // Rows of a summary card: the same "label on the left, value on the right"
@@ -432,11 +459,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (!result.alreadyPaid) {
-      const { subject, text, html } = buildThankYouEmail(result.lead);
-      transporter
-        .sendMail({ from: process.env.MAIL_FROM, to: result.lead.email, subject, text, html })
-        .then((info) => console.log('Thank-you email delivered:', info.messageId))
-        .catch((error) => console.error('Thank-you email error:', error.message));
+      sendMail('Thank-you email', () => buildThankYouEmail(result.lead), {
+        from: process.env.MAIL_FROM,
+        to: result.lead.email,
+      });
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -505,11 +531,11 @@ const server = createServer(async (req, res) => {
   // visible in the admin panel, email is just a best-effort extra notice.
   // Built from `record` (not the raw `lead` body) so the notification also
   // carries received_at and the repeat_lead flag appendLead just computed.
-  const { subject, text, html } = buildEmail(record);
-  transporter
-    .sendMail({ from: process.env.MAIL_FROM, to: process.env.MAIL_TO, replyTo: lead.email, subject, text, html })
-    .then((info) => console.log('Email delivered:', info.messageId))
-    .catch((error) => console.error('Email delivery error:', error.message));
+  sendMail('Lead email', () => buildEmail(record), {
+    from: process.env.MAIL_FROM,
+    to: process.env.MAIL_TO,
+    replyTo: lead.email,
+  });
 
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({ ok: true, duplicate: false }));
@@ -517,4 +543,16 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Mail server listening on port ${PORT}, endpoint ${ENDPOINT_PATH}`);
+  console.log(`Templates: ${MAIL_TEMPLATE_VERSION}`);
+
+  // Check the mailbox credentials on boot, so a broken SMTP login shows up in
+  // the log right away instead of only when someone submits a form.
+  transporter
+    .verify()
+    .then(() =>
+      console.log(
+        `SMTP ready: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 465} as ${process.env.SMTP_USER}, from ${process.env.MAIL_FROM}, lead copies to ${process.env.MAIL_TO}`,
+      ),
+    )
+    .catch((error) => console.error('SMTP NOT ready — emails will not be delivered:', error.message));
 });
