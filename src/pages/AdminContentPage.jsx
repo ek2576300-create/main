@@ -1,15 +1,27 @@
 import { ArrowDown, ArrowUp, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { blogs } from '../data/blogs';
 import { authors } from '../data/catalog';
 import { AdminKeyGate, AdminNav } from '../features/admin/admin-session';
 import { useAdminKey } from '../features/admin/use-admin-key';
 import { slugify } from '../features/admin/slug';
+import { fromBlogEntry } from '../features/content/published-content';
 
 const ADMIN_CONTENT_ENDPOINT = import.meta.env.VITE_ADMIN_CONTENT_ENDPOINT || '/mail-api/admin/content';
 
 // Articles for the main page that belong to the editorial team rather than to
 // one of the course authors still need an owner in the list.
 const EDITORIAL = { id: 'editorial', name: 'Редакция AskHow' };
+
+// Articles that ship inside the build (the ones the blog catalogue showed
+// before this panel existed) are edited here too: they are listed alongside
+// the stored ones, and saving writes the edited copy over the bundled one.
+const BUNDLED_IDS = new Set(blogs.map((blog) => blog.id));
+
+function bundledSeeds(stored) {
+  const known = new Set(stored.map((article) => article.id));
+  return blogs.filter((blog) => !known.has(blog.id)).map((blog) => fromBlogEntry(blog, EDITORIAL.id));
+}
 
 const INPUT_CLASS =
   'w-full rounded-lg border border-[#e2e2e2] px-3 py-2 text-sm outline-none transition focus:border-[#ffdc00]';
@@ -169,6 +181,7 @@ function SectionEditor({ section, index, total, onChange, onMove, onRemove }) {
 
 function ArticleEditor({ article, author, authorOptions, onChange, onRemove }) {
   const update = (patch) => onChange({ ...article, ...patch });
+  const bundled = BUNDLED_IDS.has(article.id);
 
   // While the id is still the one derived from the title, keep deriving it —
   // as soon as it is edited by hand it stays put.
@@ -208,7 +221,7 @@ function ArticleEditor({ article, author, authorOptions, onChange, onRemove }) {
             onClick={onRemove}
             className="inline-flex items-center gap-1.5 rounded-full border border-[#f0d2d2] px-3 py-1.5 text-[12px] font-medium text-[#c92e2e] hover:bg-[#fff6f6]"
           >
-            Удалить <Trash2 size={13} />
+            {bundled ? 'Скрыть' : 'Удалить'} <Trash2 size={13} />
           </button>
         </div>
       </div>
@@ -386,8 +399,12 @@ function ArticleEditor({ article, author, authorOptions, onChange, onRemove }) {
           onChange={(value) => update({ showInBlogs: value })}
         />
         <Toggle
-          label="Черновик"
-          hint="Пока стоит галочка, на сайте статьи нет"
+          label={bundled ? 'Скрыта с сайта' : 'Черновик'}
+          hint={
+            bundled
+              ? 'Статья из сборки сайта: снимите галочку, чтобы вернуть её'
+              : 'Пока стоит галочка, на сайте статьи нет'
+          }
           checked={Boolean(article.draft)}
           onChange={(value) => update({ draft: value })}
         />
@@ -399,6 +416,9 @@ function ArticleEditor({ article, author, authorOptions, onChange, onRemove }) {
 export function AdminContentPage() {
   const { adminKey, saveKey, clearKey } = useAdminKey();
   const [articles, setArticles] = useState([]);
+  // Which articles the service already stores — the rest still come from the
+  // build and become editable copies the first time the panel saves.
+  const [storedIds, setStoredIds] = useState(() => new Set());
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [savedAt, setSavedAt] = useState('');
@@ -440,7 +460,9 @@ export function AdminContentPage() {
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      setArticles(Array.isArray(data.articles) ? data.articles : []);
+      const stored = Array.isArray(data.articles) ? data.articles : [];
+      setArticles([...stored, ...bundledSeeds(stored)]);
+      setStoredIds(new Set(stored.map((article) => article.id)));
       setDirty(false);
       setStatus('ready');
     } catch (error) {
@@ -477,7 +499,18 @@ export function AdminContentPage() {
 
   function removeArticle(index) {
     const article = articles[index];
-    if (!window.confirm(`Удалить статью «${article.title || article.id || 'без названия'}»?`)) return;
+    const name = article.title || article.id || 'без названия';
+
+    // An article that ships inside the build cannot be deleted from here — the
+    // next deploy would bring it back. Hiding it is what actually takes it off
+    // the site, and it stays in the panel so it can be returned.
+    if (BUNDLED_IDS.has(article.id)) {
+      if (!window.confirm(`«${name}» входит в сборку сайта и не удаляется. Скрыть её с сайта?`)) return;
+      updateArticle(index, { ...article, draft: true });
+      return;
+    }
+
+    if (!window.confirm(`Удалить статью «${name}»?`)) return;
     setArticles((current) => current.filter((_, position) => position !== index));
     setEditingIndex(null);
     setDirty(true);
@@ -506,7 +539,9 @@ export function AdminContentPage() {
         return;
       }
 
-      setArticles(Array.isArray(data.articles) ? data.articles : articles);
+      const stored = Array.isArray(data.articles) ? data.articles : articles;
+      setArticles(stored);
+      setStoredIds(new Set(stored.map((article) => article.id)));
       setDirty(false);
       setSavedAt(new Date().toLocaleTimeString('ru-RU'));
       setStatus('ready');
@@ -611,8 +646,13 @@ export function AdminContentPage() {
                         <span className="block truncate text-[11px] text-[#999]">/blogs/{article.id || '…'}</span>
                       </span>
                       <span className="flex shrink-0 items-center gap-1.5 text-[10px]">
+                        {!storedIds.has(article.id) && BUNDLED_IDS.has(article.id) && (
+                          <span className="rounded-full bg-[#eaf3ff] px-2 py-1 text-[#1683ff]">Из сборки</span>
+                        )}
                         {article.draft && (
-                          <span className="rounded-full bg-[#f3f3f3] px-2 py-1 text-[#888]">Черновик</span>
+                          <span className="rounded-full bg-[#f3f3f3] px-2 py-1 text-[#888]">
+                            {BUNDLED_IDS.has(article.id) ? 'Скрыта' : 'Черновик'}
+                          </span>
                         )}
                         {article.showInBlogs && (
                           <span className="rounded-full bg-[#e7f7ec] px-2 py-1 text-[#1c7a3f]">В блогах</span>

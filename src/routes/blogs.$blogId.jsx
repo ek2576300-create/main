@@ -1,7 +1,7 @@
 import { SITE_URL } from '../config/site';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { getBlogById } from '../data/blogs';
-import { findPublishedArticle, usePublishedArticles } from '../features/content/published-content';
+import { findPublishedArticle, isArticleHidden, usePublishedArticles } from '../features/content/published-content';
 import { BlogArticlePage } from '../pages/BlogArticlePage';
 import { Placeholder } from '../pages/Placeholder';
 
@@ -50,10 +50,11 @@ function BlogArticleRoute() {
   const navigate = useNavigate();
   const { articles, loading } = usePublishedArticles();
 
-  // Bundled articles render immediately; one written in the admin panel is
-  // only known once the content request comes back, so nothing is declared
-  // missing until it does.
-  const blog = getBlogById(blogId) || findPublishedArticle(articles, blogId);
+  // The panel's copy wins over the one bundled with the build — that is how an
+  // article that ships with the site gets edited, or taken down, without a
+  // deploy. Nothing is declared missing until the content request comes back.
+  const published = findPublishedArticle(articles, blogId);
+  const blog = published || (isArticleHidden(articles, blogId) ? null : getBlogById(blogId));
 
   if (!blog) return <Placeholder title={loading ? 'Загружаем статью…' : 'Статья не найдена'} />;
 

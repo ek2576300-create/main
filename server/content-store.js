@@ -146,10 +146,12 @@ export function saveArticles(articles) {
   return task;
 }
 
-// What the site itself may see: drafts stay in the admin panel until someone
-// takes the tick off.
+// What the site itself may see. A draft keeps its content in the panel, but the
+// site still has to hear about it: articles that ship inside the build are
+// edited here too, and hiding one means telling the site to drop the bundled
+// copy. So a draft goes out as a tombstone — an id and nothing else.
 export function publishedArticles(articles) {
-  return articles.filter((article) => !article.draft);
+  return articles.map((article) => (article.draft ? { id: article.id, hidden: true } : article));
 }
 
 export function isContentError(error) {

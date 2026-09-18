@@ -65,29 +65,76 @@ export function toBlogEntry(article) {
   };
 }
 
+// An article the panel hides: it carries nothing but its id, and it also takes
+// the bundled article of the same id off the site.
+function isHidden(article) {
+  return Boolean(article.hidden);
+}
+
 // Published articles win over a bundled entry with the same id, so an article
-// can be corrected in the panel without a deploy.
+// can be corrected — or taken down — in the panel without a deploy.
 function mergeById(bundled, published) {
   const overrides = new Map(published.map((item) => [item.id, item]));
-  const merged = bundled.map((item) => overrides.get(item.id) || item);
-  const extra = published.filter((item) => !bundled.some((entry) => entry.id === item.id));
+  const merged = bundled
+    .map((item) => overrides.get(item.id) || item)
+    .filter((item) => !isHidden(item));
+  const extra = published.filter(
+    (item) => !isHidden(item) && !bundled.some((entry) => entry.id === item.id),
+  );
   return [...extra, ...merged];
 }
 
 export function mergeBlogs(bundledBlogs, articles) {
   return mergeById(
     bundledBlogs,
-    articles.filter((article) => article.showInBlogs).map(toBlogEntry),
+    articles.filter((article) => isHidden(article) || article.showInBlogs).map((article) => (isHidden(article) ? article : toBlogEntry(article))),
   );
 }
 
 export function authorArticles(articles, authorId) {
   return articles
-    .filter((article) => article.authorId === authorId && article.showOnAuthor !== false)
+    .filter((article) => !isHidden(article) && article.authorId === authorId && article.showOnAuthor !== false)
     .map(toBlogEntry);
 }
 
 export function findPublishedArticle(articles, articleId) {
   const article = articles.find((item) => item.id === articleId);
-  return article ? toBlogEntry(article) : null;
+  return article && !isHidden(article) ? toBlogEntry(article) : null;
+}
+
+// True when the panel took this article off the site — including one that came
+// with the build, which is why the bundled copy cannot simply be trusted.
+export function isArticleHidden(articles, articleId) {
+  const article = articles.find((item) => item.id === articleId);
+  return Boolean(article && isHidden(article));
+}
+
+// The reverse of toBlogEntry: an article bundled with the build, in the shape
+// the admin constructor edits. It is what lets the panel show — and take over —
+// the blogs that ship inside the site itself.
+export function fromBlogEntry(blog, authorId) {
+  return {
+    id: blog.id,
+    authorId,
+    title: blog.title || '',
+    category: blog.category || '',
+    tags: blog.tags || '',
+    excerpt: blog.excerpt || '',
+    image: blog.image || '',
+    url: blog.url || '',
+    authorName: blog.author || '',
+    publishedAt: blog.publishedAt || '',
+    readTime: blog.readTime || '',
+    lead: blog.lead || '',
+    sections: (blog.sections || []).map((section) => ({
+      heading: section.heading || '',
+      paragraphs: [...(section.paragraphs || [])],
+      items: [...(section.items || [])],
+    })),
+    conclusionTitle: blog.conclusionTitle || '',
+    conclusion: blog.conclusion || '',
+    showOnAuthor: false,
+    showInBlogs: true,
+    draft: false,
+  };
 }

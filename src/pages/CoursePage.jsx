@@ -6,6 +6,7 @@ import {
   Clock3,
   FileSpreadsheet,
   FileText,
+  Lock,
   Pause,
   Play,
   Video,
@@ -19,7 +20,7 @@ import { LessonCard } from '../components/catalog/LessonCard';
 import { PurchaseCta } from '../components/catalog/PurchaseCta';
 import { PaymentModal } from '../components/payment/PaymentModal';
 import { trackEvent } from '../utils/analytics';
-import { getPaymentLabel, isCourseUnlocked, isFreeTeaser } from '../utils/payment';
+import { getPaymentLabel, hasCourseLead, isCourseUnlocked, isFreeTeaser } from '../utils/payment';
 
 const METRIC_STYLES = [
   { bg: 'bg-[#edf7ff]', iconBg: 'bg-[#16a7ff]', text: 'text-[#168fff]', icon: Clock3, label: 'Длительность' },
@@ -423,28 +424,39 @@ function MaterialPreviewModal({ material, onClose }) {
   );
 }
 
-function MaterialsSection() {
+// Materials are the reward for leaving contact details: until the form is
+// filled the cards are visible but closed, and clicking one opens the form.
+function MaterialsSection({ unlocked, onUnlock }) {
   const [activeMaterial, setActiveMaterial] = useState(null);
   return (
     <section className="mt-12 sm:mt-16">
       <h2 className="text-[31px] font-semibold tracking-[-.035em] sm:text-[38px]">Материалы курса</h2>
+      <p className="mt-3 text-[12px] leading-[1.5] text-[#777]">
+        {unlocked
+          ? 'Материалы открыты — можно смотреть и скачивать.'
+          : 'Заполните короткую форму, и материалы откроются на этой странице.'}
+      </p>
       <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {MATERIAL_TABS.map((tab) => (
           <button
             key={tab.type}
             type="button"
-            onClick={() => setActiveMaterial(tab)}
-            className="motion-card flex items-center gap-3 rounded-[15px] border border-[#e9e9e9] bg-white px-5 py-4 text-left shadow-[0_8px_28px_rgba(0,0,0,.04)] transition hover:border-[#d8d8d8]"
+            onClick={() => (unlocked ? setActiveMaterial(tab) : onUnlock())}
+            className={`motion-card flex items-center gap-3 rounded-[15px] border px-5 py-4 text-left shadow-[0_8px_28px_rgba(0,0,0,.04)] transition ${unlocked ? 'border-[#e9e9e9] bg-white hover:border-[#d8d8d8]' : 'border-[#ececec] bg-[#fafafa] hover:border-[#dcdcdc]'}`}
           >
-            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-[12px] ${tab.color}`}><tab.icon size={20} /></span>
+            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-[12px] ${unlocked ? tab.color : 'bg-[#f0f0f0] text-[#9a9a9a]'}`}>
+              {unlocked ? <tab.icon size={20} /> : <Lock size={18} />}
+            </span>
             <span className="min-w-0">
               <strong className="block text-[13px] font-semibold">{tab.label}</strong>
-              <span className="mt-0.5 block text-[9px] text-[#888]">Открыть материал</span>
+              <span className="mt-0.5 block text-[9px] text-[#888]">
+                {unlocked ? 'Открыть материал' : 'Откроется после формы'}
+              </span>
             </span>
           </button>
         ))}
       </div>
-      <MaterialPreviewModal material={activeMaterial} onClose={() => setActiveMaterial(null)} />
+      <MaterialPreviewModal material={unlocked ? activeMaterial : null} onClose={() => setActiveMaterial(null)} />
     </section>
   );
 }
@@ -509,6 +521,9 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   const [purchaseCtaOpen, setPurchaseCtaOpen] = useState(false);
   const [lessonsExpanded, setLessonsExpanded] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(() => isCourseUnlocked(course.id));
+  const [materialsUnlocked, setMaterialsUnlocked] = useState(
+    () => hasCourseLead(course.id) || isCourseUnlocked(course.id),
+  );
   const [activeLessonId, setActiveLessonId] = useState(null);
   const [paymentFailedOpen, setPaymentFailedOpen] = useState(false);
   const programRef = useRef(null);
@@ -529,6 +544,7 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     setPurchaseCtaOpen(false);
     setLessonsExpanded(false);
     setLeadCaptured(isCourseUnlocked(course.id));
+    setMaterialsUnlocked(hasCourseLead(course.id) || isCourseUnlocked(course.id));
     setActiveLessonId(null);
     previewStartedRef.current = null;
     if (viewedCourseRef.current === course.id) return;
@@ -711,13 +727,17 @@ export function CoursePage({ course, author, onOpenAuthor }) {
         </section>
 
         <UpdatesSection updates={course.updates} />
-        <MaterialsSection />
+        <MaterialsSection
+          unlocked={materialsUnlocked}
+          onUnlock={() => requestVideoAccess('course_materials', () => {})}
+        />
         <PurchaseCta open={purchaseCtaOpen} course={course} unlocked={isFreeCourse && leadCaptured} onClose={() => setPurchaseCtaOpen(false)} onBuy={() => (isFreeCourse ? openFreeAccess('floating_cta') : openPayment('floating_cta'))} />
         <PaymentModal
           open={paymentOpen}
           course={course}
           source={paymentGate?.resubscribe ? 'newsletter_signup' : 'course_page'}
           onClose={() => { setPaymentOpen(false); setPaymentGate(null); }}
+          onPayment={() => setMaterialsUnlocked(true)}
           forceFree={Boolean(paymentGate)}
           onAccessGranted={paymentGate?.onAccessGranted}
           allowResubmit={Boolean(paymentGate?.resubscribe)}

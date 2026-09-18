@@ -84,6 +84,29 @@ function getUnlockKey(courseId) {
   return `askhow-unlocked:${courseId}`;
 }
 
+function getLeadCapturedKey(courseId) {
+  return `askhow-lead-captured:${courseId}`;
+}
+
+// Anyone who left their details for this course — whether the course is free
+// or they went on to pay — has earned the course materials. Unlike the unlock
+// flag this says nothing about the lessons: those still depend on the price.
+export function hasCourseLead(courseId) {
+  try {
+    return localStorage.getItem(getLeadCapturedKey(courseId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markLeadCaptured(courseId) {
+  try {
+    localStorage.setItem(getLeadCapturedKey(courseId), '1');
+  } catch {
+    // Private mode: the form simply asks again on the next visit.
+  }
+}
+
 // Unlock state lives in localStorage (not sessionStorage) so a visitor who
 // filled the form once on this device stays unlocked — and keeps seeing the
 // "next lesson" button — across browser restarts, not just the current tab.
@@ -175,6 +198,7 @@ export async function savePaymentLead({ course, name, email, source = 'catalog',
   if (!allowResubmit) {
     try {
       if (localStorage.getItem(leadKey) === 'saved') {
+        markLeadCaptured(course.id);
         return { ok: true, duplicate: true };
       }
     } catch {
@@ -219,10 +243,12 @@ export async function savePaymentLead({ course, name, email, source = 'catalog',
     queuePendingLead(payload, idempotencyKey);
     rememberLeadSaved(leadKey);
     markCourseUnlocked(course.id);
+    markLeadCaptured(course.id);
     return { ok: true, duplicate: false, delivered: false };
   }
 
   rememberLeadSaved(leadKey);
+  markLeadCaptured(course.id);
   if (isFree) markCourseUnlocked(course.id);
 
   return { ok: true, duplicate: false, delivered: true };
