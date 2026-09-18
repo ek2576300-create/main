@@ -14,8 +14,7 @@ const COURSE_PREVIEW_VIDEOS = Object.freeze({
   'voice-resonators': '/videos/previews/voice-resonators.mp4',
   'easy-finance-management': '/videos/previews/easy-finance-management.mp4',
   'word-of-mouth-promotion': '/videos/previews/word-of-mouth-promotion.mp4',
-  // TODO: temporary stand-in — replace with the real preview video for this course.
-  'business-hypotheses-intro': '/videos/tax.mp4',
+  'business-hypotheses-intro': '/videos/previews/business-hypotheses-intro.mp4',
 });
 
 // MONETA.Assistant принимает платёж POST-формой.

@@ -147,7 +147,7 @@ function escapeHtml(value) {
   })[char]);
 }
 
-const MAIL_TEMPLATE_VERSION = '2026-09-18-course-links';
+const MAIL_TEMPLATE_VERSION = '2026-09-18-support-caption';
 const FONT_STACK = "'Manrope',Arial,Helvetica,sans-serif";
 
 function formatMoscowTime(value) {
@@ -273,7 +273,8 @@ function renderEmailShell({ preheader = '', title, bodyHtml }) {
               <td align="center" style="padding:36px 28px 30px;color:#181818;">
                 ${renderLogo()}
                 ${bodyHtml}
-                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px auto 0;">
+                <p style="margin:20px 0 0;font-size:11px;font-weight:600;color:#777777;">Техподдержка AskHow — напишите нам, если что-то пошло не так</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px auto 0;">
                   <tr>
                     <td style="padding-right:8px;">${renderMessengerLink(TELEGRAM_URL, 'icon-telegram', 'Telegram')}</td>
                     <td>${renderMessengerLink(MAX_SUPPORT_URL, 'icon-max', 'MAX')}</td>
@@ -419,6 +420,8 @@ function buildThankYouEmail(lead) {
       '',
       courseLink ? `Курс «${courseTitle}»: ${courseLink}` : null,
       `Каталог: ${SITE_URL}`,
+      '',
+      'Техподдержка AskHow:',
       `Telegram: ${TELEGRAM_URL}`,
       `MAX: ${MAX_SUPPORT_URL}`,
       '',
