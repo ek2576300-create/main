@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAppContext } from '../app/AppContext';
 import { BlogsPage } from '../pages/BlogsPage';
 
-export const Route = createFileRoute('/blogs')({
+export const Route = createFileRoute('/blogs/')({
   head: () => ({
     meta: [
       { title: 'Каталог блогов — AskHow' },
@@ -14,10 +14,10 @@ export const Route = createFileRoute('/blogs')({
     ],
     links: [{ rel: 'canonical', href: `${SITE_URL}/blogs` }],
   }),
-  component: BlogsRoute,
+  component: BlogsIndexRoute,
 });
 
-function BlogsRoute() {
+function BlogsIndexRoute() {
   const navigate = useNavigate();
   const { query } = useAppContext();
 

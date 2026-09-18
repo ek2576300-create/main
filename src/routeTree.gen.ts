@@ -9,67 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SalesRouteImport } from './routes/sales'
-import { Route as PurchasesRouteImport } from './routes/purchases'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as FavoritesRouteImport } from './routes/favorites'
-import { Route as BlogsRouteImport } from './routes/blogs'
-import { Route as AuthorsRouteImport } from './routes/authors'
-import { Route as AddRouteImport } from './routes/add'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ReelsIndexRouteImport } from './routes/reels.index'
-import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
-import { Route as ReelsReelIdRouteImport } from './routes/reels.$reelId'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AddRouteImport } from './routes/add'
+import { Route as AuthorsRouteImport } from './routes/authors'
+import { Route as FavoritesRouteImport } from './routes/favorites'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PurchasesRouteImport } from './routes/purchases'
+import { Route as SalesRouteImport } from './routes/sales'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as AdminContentRouteImport } from './routes/admin.content'
+import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
+import { Route as BlogsIndexRouteImport } from './routes/blogs.index'
 import { Route as BlogsBlogIdRouteImport } from './routes/blogs.$blogId'
-import { Route as CatalogCourseCourseIdRouteImport } from './routes/catalog.course.$courseId'
+import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
+import { Route as ReelsIndexRouteImport } from './routes/reels.index'
+import { Route as ReelsReelIdRouteImport } from './routes/reels.$reelId'
 import { Route as CatalogAuthorAuthorIdRouteImport } from './routes/catalog.author.$authorId'
+import { Route as CatalogCourseCourseIdRouteImport } from './routes/catalog.course.$courseId'
 
-const AdminLeadsRoute = AdminLeadsRouteImport.update({
-  id: '/admin/leads',
-  path: '/admin/leads',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SalesRoute = SalesRouteImport.update({
-  id: '/sales',
-  path: '/sales',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PurchasesRoute = PurchasesRouteImport.update({
-  id: '/purchases',
-  path: '/purchases',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FavoritesRoute = FavoritesRouteImport.update({
-  id: '/favorites',
-  path: '/favorites',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogsRoute = BlogsRouteImport.update({
-  id: '/blogs',
-  path: '/blogs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthorsRoute = AuthorsRouteImport.update({
-  id: '/authors',
-  path: '/authors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AddRoute = AddRouteImport.update({
-  id: '/add',
-  path: '/add',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -77,14 +38,59 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AddRoute = AddRouteImport.update({
+  id: '/add',
+  path: '/add',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReelsIndexRoute = ReelsIndexRouteImport.update({
-  id: '/reels/',
-  path: '/reels/',
+const AuthorsRoute = AuthorsRouteImport.update({
+  id: '/authors',
+  path: '/authors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FavoritesRoute = FavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesRoute = PurchasesRouteImport.update({
+  id: '/purchases',
+  path: '/purchases',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesRoute = SalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminContentRoute = AdminContentRouteImport.update({
+  id: '/admin/content',
+  path: '/admin/content',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLeadsRoute = AdminLeadsRouteImport.update({
+  id: '/admin/leads',
+  path: '/admin/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogsIndexRoute = BlogsIndexRouteImport.update({
+  id: '/blogs/',
+  path: '/blogs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogsBlogIdRoute = BlogsBlogIdRouteImport.update({
+  id: '/blogs/$blogId',
+  path: '/blogs/$blogId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogIndexRoute = CatalogIndexRouteImport.update({
@@ -92,19 +98,14 @@ const CatalogIndexRoute = CatalogIndexRouteImport.update({
   path: '/catalog/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReelsIndexRoute = ReelsIndexRouteImport.update({
+  id: '/reels/',
+  path: '/reels/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReelsReelIdRoute = ReelsReelIdRouteImport.update({
   id: '/reels/$reelId',
   path: '/reels/$reelId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogsBlogIdRoute = BlogsBlogIdRouteImport.update({
-  id: '/$blogId',
-  path: '/$blogId',
-  getParentRoute: () => BlogsRoute,
-} as any)
-const CatalogCourseCourseIdRoute = CatalogCourseCourseIdRouteImport.update({
-  id: '/catalog/course/$courseId',
-  path: '/catalog/course/$courseId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogAuthorAuthorIdRoute = CatalogAuthorAuthorIdRouteImport.update({
@@ -112,21 +113,27 @@ const CatalogAuthorAuthorIdRoute = CatalogAuthorAuthorIdRouteImport.update({
   path: '/catalog/author/$authorId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CatalogCourseCourseIdRoute = CatalogCourseCourseIdRouteImport.update({
+  id: '/catalog/course/$courseId',
+  path: '/catalog/course/$courseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/add': typeof AddRoute
-  '/admin/leads': typeof AdminLeadsRoute
   '/authors': typeof AuthorsRoute
-  '/blogs': typeof BlogsRouteWithChildren
   '/favorites': typeof FavoritesRoute
   '/profile': typeof ProfileRoute
   '/purchases': typeof PurchasesRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/admin/content': typeof AdminContentRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/blogs/$blogId': typeof BlogsBlogIdRoute
   '/reels/$reelId': typeof ReelsReelIdRoute
+  '/blogs/': typeof BlogsIndexRoute
   '/catalog/': typeof CatalogIndexRoute
   '/reels/': typeof ReelsIndexRoute
   '/catalog/author/$authorId': typeof CatalogAuthorAuthorIdRoute
@@ -136,16 +143,17 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/add': typeof AddRoute
-  '/admin/leads': typeof AdminLeadsRoute
   '/authors': typeof AuthorsRoute
-  '/blogs': typeof BlogsRouteWithChildren
   '/favorites': typeof FavoritesRoute
   '/profile': typeof ProfileRoute
   '/purchases': typeof PurchasesRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/admin/content': typeof AdminContentRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/blogs/$blogId': typeof BlogsBlogIdRoute
   '/reels/$reelId': typeof ReelsReelIdRoute
+  '/blogs': typeof BlogsIndexRoute
   '/catalog': typeof CatalogIndexRoute
   '/reels': typeof ReelsIndexRoute
   '/catalog/author/$authorId': typeof CatalogAuthorAuthorIdRoute
@@ -156,16 +164,17 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/add': typeof AddRoute
-  '/admin/leads': typeof AdminLeadsRoute
   '/authors': typeof AuthorsRoute
-  '/blogs': typeof BlogsRouteWithChildren
   '/favorites': typeof FavoritesRoute
   '/profile': typeof ProfileRoute
   '/purchases': typeof PurchasesRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
+  '/admin/content': typeof AdminContentRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/blogs/$blogId': typeof BlogsBlogIdRoute
   '/reels/$reelId': typeof ReelsReelIdRoute
+  '/blogs/': typeof BlogsIndexRoute
   '/catalog/': typeof CatalogIndexRoute
   '/reels/': typeof ReelsIndexRoute
   '/catalog/author/$authorId': typeof CatalogAuthorAuthorIdRoute
@@ -177,16 +186,17 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/add'
-    | '/admin/leads'
     | '/authors'
-    | '/blogs'
     | '/favorites'
     | '/profile'
     | '/purchases'
     | '/sales'
     | '/settings'
+    | '/admin/content'
+    | '/admin/leads'
     | '/blogs/$blogId'
     | '/reels/$reelId'
+    | '/blogs/'
     | '/catalog/'
     | '/reels/'
     | '/catalog/author/$authorId'
@@ -196,16 +206,17 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/add'
-    | '/admin/leads'
     | '/authors'
-    | '/blogs'
     | '/favorites'
     | '/profile'
     | '/purchases'
     | '/sales'
     | '/settings'
+    | '/admin/content'
+    | '/admin/leads'
     | '/blogs/$blogId'
     | '/reels/$reelId'
+    | '/blogs'
     | '/catalog'
     | '/reels'
     | '/catalog/author/$authorId'
@@ -215,16 +226,17 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/add'
-    | '/admin/leads'
     | '/authors'
-    | '/blogs'
     | '/favorites'
     | '/profile'
     | '/purchases'
     | '/sales'
     | '/settings'
+    | '/admin/content'
+    | '/admin/leads'
     | '/blogs/$blogId'
     | '/reels/$reelId'
+    | '/blogs/'
     | '/catalog/'
     | '/reels/'
     | '/catalog/author/$authorId'
@@ -235,15 +247,17 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AddRoute: typeof AddRoute
-  AdminLeadsRoute: typeof AdminLeadsRoute
   AuthorsRoute: typeof AuthorsRoute
-  BlogsRoute: typeof BlogsRouteWithChildren
   FavoritesRoute: typeof FavoritesRoute
   ProfileRoute: typeof ProfileRoute
   PurchasesRoute: typeof PurchasesRoute
   SalesRoute: typeof SalesRoute
   SettingsRoute: typeof SettingsRoute
+  AdminContentRoute: typeof AdminContentRoute
+  AdminLeadsRoute: typeof AdminLeadsRoute
+  BlogsBlogIdRoute: typeof BlogsBlogIdRoute
   ReelsReelIdRoute: typeof ReelsReelIdRoute
+  BlogsIndexRoute: typeof BlogsIndexRoute
   CatalogIndexRoute: typeof CatalogIndexRoute
   ReelsIndexRoute: typeof ReelsIndexRoute
   CatalogAuthorAuthorIdRoute: typeof CatalogAuthorAuthorIdRoute
@@ -252,67 +266,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/admin/leads': {
-      id: '/admin/leads'
-      path: '/admin/leads'
-      fullPath: '/admin/leads'
-      preLoaderRoute: typeof AdminLeadsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sales': {
-      id: '/sales'
-      path: '/sales'
-      fullPath: '/sales'
-      preLoaderRoute: typeof SalesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/purchases': {
-      id: '/purchases'
-      path: '/purchases'
-      fullPath: '/purchases'
-      preLoaderRoute: typeof PurchasesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/favorites': {
-      id: '/favorites'
-      path: '/favorites'
-      fullPath: '/favorites'
-      preLoaderRoute: typeof FavoritesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blogs': {
-      id: '/blogs'
-      path: '/blogs'
-      fullPath: '/blogs'
-      preLoaderRoute: typeof BlogsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/authors': {
-      id: '/authors'
-      path: '/authors'
-      fullPath: '/authors'
-      preLoaderRoute: typeof AuthorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/add': {
-      id: '/add'
-      path: '/add'
-      fullPath: '/add'
-      preLoaderRoute: typeof AddRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -322,18 +280,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/add': {
+      id: '/add'
+      path: '/add'
+      fullPath: '/add'
+      preLoaderRoute: typeof AddRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/reels/': {
-      id: '/reels/'
-      path: '/reels'
-      fullPath: '/reels/'
-      preLoaderRoute: typeof ReelsIndexRouteImport
+    '/authors': {
+      id: '/authors'
+      path: '/authors'
+      fullPath: '/authors'
+      preLoaderRoute: typeof AuthorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favorites': {
+      id: '/favorites'
+      path: '/favorites'
+      fullPath: '/favorites'
+      preLoaderRoute: typeof FavoritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases': {
+      id: '/purchases'
+      path: '/purchases'
+      fullPath: '/purchases'
+      preLoaderRoute: typeof PurchasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales': {
+      id: '/sales'
+      path: '/sales'
+      fullPath: '/sales'
+      preLoaderRoute: typeof SalesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/content': {
+      id: '/admin/content'
+      path: '/admin/content'
+      fullPath: '/admin/content'
+      preLoaderRoute: typeof AdminContentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/leads': {
+      id: '/admin/leads'
+      path: '/admin/leads'
+      fullPath: '/admin/leads'
+      preLoaderRoute: typeof AdminLeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blogs/': {
+      id: '/blogs/'
+      path: '/blogs'
+      fullPath: '/blogs/'
+      preLoaderRoute: typeof BlogsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blogs/$blogId': {
+      id: '/blogs/$blogId'
+      path: '/blogs/$blogId'
+      fullPath: '/blogs/$blogId'
+      preLoaderRoute: typeof BlogsBlogIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog/': {
@@ -343,25 +364,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reels/': {
+      id: '/reels/'
+      path: '/reels'
+      fullPath: '/reels/'
+      preLoaderRoute: typeof ReelsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reels/$reelId': {
       id: '/reels/$reelId'
       path: '/reels/$reelId'
       fullPath: '/reels/$reelId'
       preLoaderRoute: typeof ReelsReelIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blogs/$blogId': {
-      id: '/blogs/$blogId'
-      path: '/$blogId'
-      fullPath: '/blogs/$blogId'
-      preLoaderRoute: typeof BlogsBlogIdRouteImport
-      parentRoute: typeof BlogsRoute
-    }
-    '/catalog/course/$courseId': {
-      id: '/catalog/course/$courseId'
-      path: '/catalog/course/$courseId'
-      fullPath: '/catalog/course/$courseId'
-      preLoaderRoute: typeof CatalogCourseCourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog/author/$authorId': {
@@ -371,32 +385,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogAuthorAuthorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/catalog/course/$courseId': {
+      id: '/catalog/course/$courseId'
+      path: '/catalog/course/$courseId'
+      fullPath: '/catalog/course/$courseId'
+      preLoaderRoute: typeof CatalogCourseCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
-
-interface BlogsRouteChildren {
-  BlogsBlogIdRoute: typeof BlogsBlogIdRoute
-}
-
-const BlogsRouteChildren: BlogsRouteChildren = {
-  BlogsBlogIdRoute: BlogsBlogIdRoute,
-}
-
-const BlogsRouteWithChildren = BlogsRoute._addFileChildren(BlogsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AddRoute: AddRoute,
-  AdminLeadsRoute: AdminLeadsRoute,
   AuthorsRoute: AuthorsRoute,
-  BlogsRoute: BlogsRouteWithChildren,
   FavoritesRoute: FavoritesRoute,
   ProfileRoute: ProfileRoute,
   PurchasesRoute: PurchasesRoute,
   SalesRoute: SalesRoute,
   SettingsRoute: SettingsRoute,
+  AdminContentRoute: AdminContentRoute,
+  AdminLeadsRoute: AdminLeadsRoute,
+  BlogsBlogIdRoute: BlogsBlogIdRoute,
   ReelsReelIdRoute: ReelsReelIdRoute,
+  BlogsIndexRoute: BlogsIndexRoute,
   CatalogIndexRoute: CatalogIndexRoute,
   ReelsIndexRoute: ReelsIndexRoute,
   CatalogAuthorAuthorIdRoute: CatalogAuthorAuthorIdRoute,
@@ -405,12 +418,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.jsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

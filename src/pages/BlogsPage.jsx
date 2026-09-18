@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ArrowRight, Clock3 } from 'lucide-react';
 import { blogs } from '../data/blogs';
+import { mergeBlogs, usePublishedArticles } from '../features/content/published-content';
 
 function BlogCard({ item, onOpenBlog }) {
   return (
@@ -49,16 +50,19 @@ function BlogCard({ item, onOpenBlog }) {
 }
 
 export function BlogsPage({ query, onOpenBlog }) {
+  const { articles } = usePublishedArticles();
+  const allBlogs = useMemo(() => mergeBlogs(blogs, articles), [articles]);
+
   const visibleBlogs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return blogs;
+    if (!normalizedQuery) return allBlogs;
 
-    return blogs.filter((item) =>
+    return allBlogs.filter((item) =>
       `${item.title} ${item.category} ${item.tags} ${item.excerpt}`
         .toLowerCase()
         .includes(normalizedQuery),
     );
-  }, [query]);
+  }, [allBlogs, query]);
 
   return (
     <main className="px-3 pb-16 min-[380px]:px-4 sm:px-5 sm:pb-20 lg:ml-[190px] lg:px-[29px]">

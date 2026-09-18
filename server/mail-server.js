@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import nodemailer from 'nodemailer';
+import { isContentError, publishedArticles, readArticles, saveArticles } from './content-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,6 +12,8 @@ const PORT = Number(process.env.MAIL_PORT || process.env.PORT || 3020);
 const ENDPOINT_PATH = process.env.MAIL_ENDPOINT_PATH || '/api/lead';
 const PAID_PATH = process.env.MAIL_PAID_PATH || '/api/lead/paid';
 const ADMIN_LEADS_PATH = process.env.ADMIN_LEADS_PATH || '/api/admin/leads';
+const CONTENT_PATH = process.env.CONTENT_PATH || '/api/content';
+const ADMIN_CONTENT_PATH = process.env.ADMIN_CONTENT_PATH || '/api/admin/content';
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
@@ -19,6 +22,9 @@ const MAIL_API_KEY = process.env.MAIL_API_KEY || '';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const LEADS_FILE = process.env.LEADS_FILE || path.join(__dirname, 'data', 'leads.json');
 const MAX_BODY_BYTES = 64 * 1024;
+// A whole collection of articles is a different order of magnitude from a
+// lead, so the content endpoint gets its own ceiling.
+const MAX_CONTENT_BODY_BYTES = 2 * 1024 * 1024;
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 
 const transporter = nodemailer.createTransport({
@@ -30,6 +36,8 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASSWORD,
   },
 });
+
+const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 
 const seenIdempotencyKeys = new Map();
 
@@ -47,16 +55,16 @@ function applyCors(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, X-Admin-Key, Idempotency-Key');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
 }
 
-function readJsonBody(req) {
+function readJsonBody(req, maxBytes = MAX_BODY_BYTES) {
   return new Promise((resolve, reject) => {
     let received = 0;
     const chunks = [];
     req.on('data', (chunk) => {
       received += chunk.length;
-      if (received > MAX_BODY_BYTES) {
+      if (received > maxBytes) {
         reject(new Error('payload_too_large'));
         req.destroy();
         return;
@@ -502,6 +510,78 @@ const server = createServer(async (req, res) => {
     // `templates` tells at a glance whether the running process already has
     // the current email layout, without having to send a test letter.
     res.end(JSON.stringify({ ok: true, service: 'mail-server', templates: MAIL_TEMPLATE_VERSION }));
+    return;
+  }
+
+  // What the site reads to render author articles and the blog catalogue.
+  // Public on purpose: it is the published content, and the site fetches it
+  // from the visitor's browser.
+  if (req.method === 'GET' && url.pathname === CONTENT_PATH) {
+    let articles;
+    try {
+      articles = publishedArticles(await readArticles());
+    } catch (error) {
+      console.error('Content read error:', error.message);
+      res.writeHead(500, JSON_HEADERS);
+      res.end(JSON.stringify({ ok: false, error: 'storage_failed' }));
+      return;
+    }
+
+    res.writeHead(200, { ...JSON_HEADERS, 'Cache-Control': 'no-cache' });
+    res.end(JSON.stringify({ ok: true, count: articles.length, articles }));
+    return;
+  }
+
+  if (url.pathname === ADMIN_CONTENT_PATH && (req.method === 'GET' || req.method === 'PUT')) {
+    if (!ADMIN_KEY || req.headers['x-admin-key'] !== ADMIN_KEY) {
+      res.writeHead(401, JSON_HEADERS);
+      res.end(JSON.stringify({ ok: false, error: 'unauthorized' }));
+      return;
+    }
+
+    if (req.method === 'GET') {
+      let articles;
+      try {
+        articles = await readArticles();
+      } catch (error) {
+        console.error('Content read error:', error.message);
+        res.writeHead(500, JSON_HEADERS);
+        res.end(JSON.stringify({ ok: false, error: 'storage_failed' }));
+        return;
+      }
+
+      res.writeHead(200, JSON_HEADERS);
+      res.end(JSON.stringify({ ok: true, count: articles.length, articles }));
+      return;
+    }
+
+    let body;
+    try {
+      body = await readJsonBody(req, MAX_CONTENT_BODY_BYTES);
+    } catch (error) {
+      const status = error.message === 'payload_too_large' ? 413 : 400;
+      res.writeHead(status, JSON_HEADERS);
+      res.end(JSON.stringify({ ok: false, error: error.message }));
+      return;
+    }
+
+    try {
+      // The panel always sends the full collection, so a save is a replace —
+      // no partial state to reconcile and nothing to merge on the server.
+      const articles = await saveArticles(body?.articles);
+      console.log(`Content saved: ${articles.length} article(s)`);
+      res.writeHead(200, JSON_HEADERS);
+      res.end(JSON.stringify({ ok: true, count: articles.length, articles }));
+    } catch (error) {
+      if (isContentError(error)) {
+        res.writeHead(400, JSON_HEADERS);
+        res.end(JSON.stringify({ ok: false, error: 'invalid_content', message: error.message }));
+        return;
+      }
+      console.error('Content storage error:', error.message);
+      res.writeHead(500, JSON_HEADERS);
+      res.end(JSON.stringify({ ok: false, error: 'storage_failed' }));
+    }
     return;
   }
 

@@ -1,6 +1,7 @@
 import { SITE_URL } from '../config/site';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { getBlogById } from '../data/blogs';
+import { findPublishedArticle, usePublishedArticles } from '../features/content/published-content';
 import { BlogArticlePage } from '../pages/BlogArticlePage';
 import { Placeholder } from '../pages/Placeholder';
 
@@ -47,9 +48,14 @@ export const Route = createFileRoute('/blogs/$blogId')({
 function BlogArticleRoute() {
   const { blogId } = Route.useParams();
   const navigate = useNavigate();
-  const blog = getBlogById(blogId);
+  const { articles, loading } = usePublishedArticles();
 
-  if (!blog) return <Placeholder title="Статья не найдена" />;
+  // Bundled articles render immediately; one written in the admin panel is
+  // only known once the content request comes back, so nothing is declared
+  // missing until it does.
+  const blog = getBlogById(blogId) || findPublishedArticle(articles, blogId);
+
+  if (!blog) return <Placeholder title={loading ? 'Загружаем статью…' : 'Статья не найдена'} />;
 
   return <BlogArticlePage blog={blog} onBack={() => navigate({ to: '/blogs' })} />;
 }
