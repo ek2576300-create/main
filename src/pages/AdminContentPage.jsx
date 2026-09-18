@@ -11,7 +11,7 @@ const ADMIN_CONTENT_ENDPOINT = import.meta.env.VITE_ADMIN_CONTENT_ENDPOINT || '/
 
 // Articles for the main page that belong to the editorial team rather than to
 // one of the course authors still need an owner in the list.
-const EDITORIAL = { id: 'editorial', name: 'Редакция AskHow' };
+const EDITORIAL = { id: 'editorial', name: 'Полезные статьи' };
 
 // Articles that ship inside the build (the ones the blog catalogue showed
 // before this panel existed) are edited here too: they are listed alongside
