@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,6 +81,53 @@ function isValidEmail(value) {
 const TELEGRAM_URL = 'https://t.me/+J1XU4RVIVQM1NjBi';
 const MAX_SUPPORT_URL = 'https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc';
 const SITE_URL = 'https://catalog.askhow.ru';
+const COURSE_URL_BASE = `${SITE_URL}/catalog/course`;
+
+// The AskHow wordmark and the messenger marks travel with the letter as inline
+// (cid:) attachments rather than as hotlinks: mail clients that block remote
+// images still show them, and nothing depends on the site being reachable.
+// A missing file must never cost us the email, so anything that fails to load
+// simply falls back to text.
+const EMAIL_IMAGES = [
+  { cid: 'askhow-logo', file: 'askhow-logo.png' },
+  { cid: 'icon-telegram', file: 'icon-telegram.png' },
+  { cid: 'icon-max', file: 'icon-max.png' },
+];
+
+const emailImages = new Map();
+for (const image of EMAIL_IMAGES) {
+  try {
+    emailImages.set(image.cid, readFileSync(path.join(__dirname, 'assets', image.file)));
+  } catch (error) {
+    console.error(`Email image missing (${image.file}):`, error.message);
+  }
+}
+
+const inlineAttachments = EMAIL_IMAGES.filter((image) => emailImages.has(image.cid)).map((image) => ({
+  filename: image.file,
+  cid: image.cid,
+  content: emailImages.get(image.cid),
+  contentType: 'image/png',
+  contentDisposition: 'inline',
+}));
+
+function renderInlineImage(cid, { width, height, alt = '', style = '' }) {
+  if (!emailImages.has(cid)) return '';
+  return `<img src="cid:${cid}" width="${width}" height="${height}" alt="${escapeHtml(alt)}" style="display:inline-block;border:0;outline:none;width:${width}px;height:${height}px;${style}" />`;
+}
+
+function courseUrl(courseId) {
+  return courseId ? `${COURSE_URL_BASE}/${encodeURIComponent(courseId)}` : '';
+}
+
+// Some of the values we link (the page a lead came from) arrive straight from
+// the browser, so they are quoted for the attribute and limited to the schemes
+// a letter has any business linking.
+function safeUrl(value) {
+  const url = String(value ?? '').trim();
+  if (!/^(https?:|mailto:)/i.test(url)) return '';
+  return escapeHtml(url);
+}
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -91,7 +139,7 @@ function escapeHtml(value) {
   })[char]);
 }
 
-const MAIL_TEMPLATE_VERSION = '2026-09-15-minimal';
+const MAIL_TEMPLATE_VERSION = '2026-09-18-course-links';
 const FONT_STACK = "'Manrope',Arial,Helvetica,sans-serif";
 
 function formatMoscowTime(value) {
@@ -129,23 +177,33 @@ function sendMail(kind, build, envelope) {
   }
 
   transporter
-    .sendMail({ ...envelope, subject: letter.subject, text: letter.text, html: letter.html })
+    .sendMail({
+      ...envelope,
+      subject: letter.subject,
+      text: letter.text,
+      html: letter.html,
+      attachments: inlineAttachments,
+    })
     .then((info) => console.log(`${kind} delivered:`, info.messageId))
     .catch((error) => console.error(`${kind} error:`, error.message));
 }
 
 // Rows of a summary card: the same "label on the left, value on the right"
-// list the thank-you page shows.
+// list the thank-you page shows. A third element turns the value into a link —
+// that is how the course row points at the course itself.
 function renderSummaryRows(rows) {
   return rows
     .filter(([, value]) => value)
-    .map(
-      ([label, value], index) => `
+    .map(([label, value, href], index) => {
+      const text = escapeHtml(value);
+      const link = safeUrl(href);
+      const content = link ? `<a href="${link}" style="color:#181818;text-decoration:underline;">${text}</a>` : text;
+      return `
         <tr>
           <td style="padding:11px 15px;font-size:12px;color:#999999;${index ? 'border-top:1px solid #f2f2f2;' : ''}">${escapeHtml(label)}</td>
-          <td align="right" style="padding:11px 15px;font-size:12px;font-weight:600;color:#181818;${index ? 'border-top:1px solid #f2f2f2;' : ''}">${escapeHtml(value)}</td>
-        </tr>`,
-    )
+          <td align="right" style="padding:11px 15px;font-size:12px;font-weight:600;color:#181818;${index ? 'border-top:1px solid #f2f2f2;' : ''}">${content}</td>
+        </tr>`;
+    })
     .join('');
 }
 
@@ -169,6 +227,24 @@ function renderSteps(steps) {
     .join('');
 }
 
+// The AskHow wordmark, with the plain-text version kept as the fallback for
+// clients that refuse inline images altogether.
+function renderLogo() {
+  const image = renderInlineImage('askhow-logo', { width: 104, height: 20, alt: 'AskHow' });
+  return image || '<div style="font-size:21px;font-weight:800;letter-spacing:-1.2px;color:#181818;">askhow</div>';
+}
+
+// A messenger pill: brand mark plus name, and just the name if the mark is
+// unavailable.
+function renderMessengerLink(href, cid, label) {
+  const icon = renderInlineImage(cid, {
+    width: 14,
+    height: 14,
+    style: 'border-radius:4px;vertical-align:middle;margin-right:6px;',
+  });
+  return `<a href="${href}" style="display:inline-block;padding:8px 14px;border-radius:999px;background:#f7f7f7;color:#555555;font-size:11px;font-weight:600;text-decoration:none;">${icon}<span style="vertical-align:middle;">${escapeHtml(label)}</span></a>`;
+}
+
 // Shared chrome, deliberately plain so every email reads like the site: a
 // white card with hairline borders, the AskHow wordmark, and quiet grey type.
 function renderEmailShell({ preheader = '', title, bodyHtml }) {
@@ -187,16 +263,12 @@ function renderEmailShell({ preheader = '', title, bodyHtml }) {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #ececec;border-radius:24px;">
             <tr>
               <td align="center" style="padding:36px 28px 30px;color:#181818;">
-                <div style="font-size:21px;font-weight:800;letter-spacing:-1.2px;color:#181818;">askhow</div>
+                ${renderLogo()}
                 ${bodyHtml}
                 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px auto 0;">
                   <tr>
-                    <td style="padding-right:8px;">
-                      <a href="${TELEGRAM_URL}" style="display:inline-block;padding:8px 14px;border-radius:999px;background:#f7f7f7;color:#555555;font-size:11px;font-weight:600;text-decoration:none;">Telegram</a>
-                    </td>
-                    <td>
-                      <a href="${MAX_SUPPORT_URL}" style="display:inline-block;padding:8px 14px;border-radius:999px;background:#f7f7f7;color:#555555;font-size:11px;font-weight:600;text-decoration:none;">MAX</a>
-                    </td>
+                    <td style="padding-right:8px;">${renderMessengerLink(TELEGRAM_URL, 'icon-telegram', 'Telegram')}</td>
+                    <td>${renderMessengerLink(MAX_SUPPORT_URL, 'icon-max', 'MAX')}</td>
                   </tr>
                 </table>
                 <p style="margin:22px 0 0;font-size:10px;line-height:1.6;color:#b5b5b5;">ООО «АСКХАУ» · ИНН 1655479795 · <a href="${SITE_URL}" style="color:#b5b5b5;text-decoration:none;">${SITE_URL.replace('https://', '')}</a></p>
@@ -212,14 +284,15 @@ function renderEmailShell({ preheader = '', title, bodyHtml }) {
 
 function buildEmail(lead) {
   const isFree = !lead.price || lead.price === 'Бесплатно';
+  const courseLink = courseUrl(lead.course_id);
   const rows = [
     ['Имя', lead.name],
-    ['E-mail', lead.email],
-    ['Курс', lead.course_title || lead.course_id || '—'],
+    ['E-mail', lead.email, lead.email ? `mailto:${lead.email}` : ''],
+    ['Курс', lead.course_title || lead.course_id || '—', courseLink],
     ['Цена', isFree ? 'Бесплатно' : `${lead.price ?? '—'} ${lead.currency || ''}`.trim()],
     ['Источник', lead.source || '—'],
     ['Форма', lead.form_name || lead.form_id || '—'],
-    ['Страница', lead.page_url || '—'],
+    ['Страница', lead.page_url || '—', lead.page_url || ''],
     ['Время', formatMoscowTime(lead.received_at || lead.time)],
   ];
 
@@ -250,11 +323,12 @@ function buildEmail(lead) {
       'Новая заявка',
       '',
       ...rows.map(([label, value]) => `${label}: ${value}`),
-      lead.repeat_lead ? '\nПовторная заявка — человек уже оставлял данные по этому курсу.' : '',
+      lead.repeat_lead ? '\nПовторная заявка — человек уже оставлял данные по этому курсу.' : null,
       '',
+      courseLink ? `Курс на сайте: ${courseLink}` : null,
       `Заявки: ${SITE_URL}/admin/leads`,
     ]
-      .filter(Boolean)
+      .filter((line) => line !== null)
       .join('\n'),
     html: renderEmailShell({
       title: 'Новая заявка — AskHow',
@@ -268,11 +342,20 @@ function buildThankYouEmail(lead) {
   const courseTitle = lead.course_title || lead.course_id || 'курс';
   const greeting = lead.name ? `Здравствуйте, ${lead.name}!` : 'Здравствуйте!';
   const priceLine = lead.price ? `${lead.price} ${lead.currency || ''}`.trim() : null;
+  // Without this the letter tells someone their course is open and then leaves
+  // them to find it themselves.
+  const courseLink = courseUrl(lead.course_id);
 
   const steps = [
     ['1', 'Оплата получена', 'Платёж уже отражён в системе.'],
     ['2', 'Письмо с доступом', 'Придёт на этот e-mail в ближайшее время.'],
-    ['3', 'Можно учиться', 'Курс открыт — возвращайтесь в каталог в любое время.'],
+    [
+      '3',
+      'Можно учиться',
+      courseLink
+        ? 'Курс уже открыт — перейдите к нему по кнопке ниже или вернитесь в каталог в любое время.'
+        : 'Курс открыт — возвращайтесь в каталог в любое время.',
+    ],
   ];
 
   // Mirrors public/thanks.html so the letter and the page read as one thing.
@@ -289,7 +372,7 @@ function buildThankYouEmail(lead) {
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 0;border:1px solid #ececec;border-radius:15px;text-align:left;">
       ${renderSummaryRows([
-        ['Курс', courseTitle],
+        ['Курс', courseTitle, courseLink],
         ['Оплачено', priceLine],
         ['E-mail', lead.email],
       ])}
@@ -302,10 +385,17 @@ function buildThankYouEmail(lead) {
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px auto 0;">
       <tr>
         <td align="center" style="border-radius:999px;background:#ffdc00;">
-          <a href="${SITE_URL}" style="display:inline-block;padding:14px 26px;font-size:12px;font-weight:600;color:#181818;text-decoration:none;">Вернуться в каталог</a>
+          <a href="${courseLink || SITE_URL}" style="display:inline-block;padding:14px 26px;font-size:12px;font-weight:600;color:#181818;text-decoration:none;">${
+            courseLink ? 'Перейти к курсу' : 'Вернуться в каталог'
+          }</a>
         </td>
       </tr>
-    </table>`;
+    </table>
+    ${
+      courseLink
+        ? `<p style="margin:12px 0 0;font-size:11px;"><a href="${SITE_URL}" style="color:#777777;font-weight:600;text-decoration:underline;">Вернуться в каталог</a></p>`
+        : ''
+    }`;
 
   return {
     subject: `Спасибо за оплату — ${courseTitle}`.slice(0, 180),
@@ -319,13 +409,14 @@ function buildThankYouEmail(lead) {
       '2. Письмо с доступом — придёт на этот e-mail в ближайшее время.',
       '3. Можно учиться — курс открыт в каталоге.',
       '',
+      courseLink ? `Курс «${courseTitle}»: ${courseLink}` : null,
       `Каталог: ${SITE_URL}`,
       `Telegram: ${TELEGRAM_URL}`,
       `MAX: ${MAX_SUPPORT_URL}`,
       '',
       'Команда AskHow',
     ]
-      .filter(Boolean)
+      .filter((line) => line !== null)
       .join('\n'),
     html: renderEmailShell({
       title: 'Спасибо за оплату — AskHow',

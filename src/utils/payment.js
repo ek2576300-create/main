@@ -22,7 +22,7 @@ function createTransactionId(courseId) {
   return `askhow-${courseId}-${Date.now()}-${random}`.slice(0, 255);
 }
 
-export function submitMonetaPayment(course, { email } = {}) {
+export function submitMonetaPayment(course, { email, name } = {}) {
   const payment = course?.payment;
   if (!payment?.merchantId || !payment?.amount) return false;
 
@@ -35,6 +35,9 @@ export function submitMonetaPayment(course, { email } = {}) {
   if (payment.amount) successUrl.searchParams.set('price', String(payment.amount));
   if (payment.currency) successUrl.searchParams.set('currency', payment.currency);
   if (email) successUrl.searchParams.set('email', email.trim().toLowerCase());
+  // The page greets the buyer by name, exactly like the thank-you letter does
+  // (the link back to the course it builds itself from course_id).
+  if (name) successUrl.searchParams.set('name', name.trim());
 
   // Failed/cancelled payments send the visitor back to the course page itself
   // (not a standalone page) so CoursePage can close the payment form and show

@@ -73,6 +73,7 @@
       .row + .row { border-top: 1px solid #f2f2f2; }
       .row span { color: #999; flex: none; }
       .row b { font-weight: 600; text-align: right; }
+      .row a { color: #181818; text-decoration: underline; text-underline-offset: 2px; }
       .steps { margin: 24px 0 0; display: grid; gap: 13px; text-align: left; }
       .step { display: flex; align-items: flex-start; gap: 11px; }
       .step i {
@@ -106,6 +107,15 @@
         transition: transform 0.18s ease;
       }
       .button:hover { transform: translateY(-1px); }
+      .secondary-row { margin-top: 12px; }
+      .secondary {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        color: #777;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
       .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
       .links a {
         display: inline-flex;
@@ -120,7 +130,7 @@
         text-decoration: none;
       }
       .links a:hover { background: #f0f0f0; }
-      .links svg { width: 13px; height: 13px; }
+      .links img { width: 14px; height: 14px; border-radius: 4px; }
       .legal { margin: 22px 0 0; font-size: 9px; line-height: 1.6; color: #b5b5b5; }
       @media (max-width: 420px) {
         .card { padding: 30px 18px 24px; border-radius: 20px; }
@@ -165,7 +175,7 @@
       </div>
 
       <h1>Спасибо!</h1>
-      <p class="lead" id="thanks-copy">Оплата прошла успешно. Информацию о доступе отправим на e-mail, указанный перед оплатой.</p>
+      <p class="lead" id="thanks-copy">Оплата прошла успешно. Информацию о доступе отправим на этот e-mail.</p>
 
       <div class="summary" id="summary" hidden>
         <div class="row" id="row-course" hidden><span>Курс</span><b id="value-course"></b></div>
@@ -175,24 +185,27 @@
 
       <div class="steps">
         <div class="step"><i>1</i><div><strong>Оплата получена</strong><p>Платёж уже отражён в системе.</p></div></div>
-        <div class="step"><i>2</i><div><strong>Письмо с доступом</strong><p>Придёт на указанный e-mail в ближайшее время.</p></div></div>
-        <div class="step"><i>3</i><div><strong>Можно учиться</strong><p>Курс открыт — возвращайтесь в каталог в любое время.</p></div></div>
+        <div class="step"><i>2</i><div><strong>Письмо с доступом</strong><p>Придёт на этот e-mail в ближайшее время.</p></div></div>
+        <div class="step"><i>3</i><div><strong>Можно учиться</strong><p id="step-3-text">Курс открыт — возвращайтесь в каталог в любое время.</p></div></div>
       </div>
 
-      <a class="button" href="https://catalog.askhow.ru/">Вернуться в каталог</a>
+      <a class="button" id="primary-cta" href="https://catalog.askhow.ru/">Вернуться в каталог</a>
+      <div class="secondary-row" id="catalog-link" hidden>
+        <a class="secondary" href="https://catalog.askhow.ru/">Вернуться в каталог</a>
+      </div>
 
       <div class="links">
         <a href="https://t.me/+J1XU4RVIVQM1NjBi" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M21.2 3.6 2.9 10.7c-1.2.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.5c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.2-2.1 4.6 3.4c.8.5 1.4.2 1.6-.7l3-14c.3-1.2-.4-1.7-1.2-1.5Z" fill="currentColor"/></svg>
+          <img src="/tg.svg" alt="" width="14" height="14" />
           Telegram
         </a>
         <a href="https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h16v12H8l-4 4V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <img src="/max.svg" alt="" width="14" height="14" />
           MAX
         </a>
       </div>
 
-      <p class="legal">ООО «АСКХАУ» · ИНН 1655479795</p>
+      <p class="legal">ООО «АСКХАУ» · ИНН 1655479795 · <a href="https://catalog.askhow.ru/" style="color:#b5b5b5;text-decoration:none;">catalog.askhow.ru</a></p>
     </main>
     <script>
       (function () {
@@ -202,30 +215,58 @@
         }
 
         var email = params.get('email');
+        var name = params.get('name');
         var courseId = params.get('course_id');
         var courseTitle = params.get('course_title');
         var price = params.get('price');
         var currency = params.get('currency') || 'RUB';
+        // The course lives on this same host, so the link back to it survives
+        // staging and preview deploys without the payment provider carrying it.
+        var courseUrl = courseId ? '/catalog/course/' + encodeURIComponent(courseId) : '';
 
-        function fill(rowId, valueId, value) {
+        function fill(rowId, valueId, value, href) {
           if (!value) return false;
-          document.getElementById(valueId).textContent = value;
+          var slot = document.getElementById(valueId);
+          if (href) {
+            var link = document.createElement('a');
+            link.href = href;
+            link.textContent = value;
+            slot.textContent = '';
+            slot.appendChild(link);
+          } else {
+            slot.textContent = value;
+          }
           document.getElementById(rowId).hidden = false;
           return true;
         }
 
+        var greeting = name ? 'Здравствуйте, ' + name + '! ' : '';
         if (courseTitle) {
           document.title = 'Спасибо за оплату «' + courseTitle + '» — AskHow';
           document.getElementById('thanks-copy').textContent =
-            'Оплата курса «' + courseTitle + '» прошла успешно. Информацию о доступе отправим на e-mail, указанный перед оплатой.';
+            greeting + 'Оплата курса «' + courseTitle + '» прошла успешно. Информацию о доступе отправим на этот e-mail.';
+        } else if (greeting) {
+          document.getElementById('thanks-copy').textContent =
+            greeting + 'Оплата прошла успешно. Информацию о доступе отправим на этот e-mail.';
         }
 
         var hasRows = [
-          fill('row-course', 'value-course', courseTitle),
+          fill('row-course', 'value-course', courseTitle, courseUrl),
           fill('row-price', 'value-price', price ? price + ' ' + currency : ''),
-          fill('row-email', 'value-email', email),
+          fill('row-email', 'value-email', email, email ? 'mailto:' + email : ''),
         ].some(Boolean);
         if (hasRows) document.getElementById('summary').hidden = false;
+
+        // The point of paying is the course itself: send the buyer straight to
+        // it and leave the catalog as the quieter second option.
+        if (courseUrl) {
+          var primaryCta = document.getElementById('primary-cta');
+          primaryCta.href = courseUrl;
+          primaryCta.textContent = 'Перейти к курсу';
+          document.getElementById('catalog-link').hidden = false;
+          document.getElementById('step-3-text').textContent =
+            'Курс уже открыт — перейдите к нему по кнопке ниже или вернитесь в каталог в любое время.';
+        }
 
         // Tell the backend which lead just paid, so it can mark it paid in the
         // admin panel and send the client a thank-you email. Best-effort: a

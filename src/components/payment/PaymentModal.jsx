@@ -110,7 +110,7 @@ export function PaymentModal({ open, course, source = 'course_page', onClose, on
       }
       trackEvent('payment_redirect', { course_id: course.id, course_title: course.title, course_price: course.price || null, source });
       redirectingRef.current = true;
-      if (!submitMonetaPayment(course, { email: form.email })) throw new Error('Payment configuration is missing');
+      if (!submitMonetaPayment(course, { email: form.email, name: form.name })) throw new Error('Payment configuration is missing');
     } catch {
       redirectingRef.current = false;
       setSubmitError('Не удалось сохранить заявку. Проверьте соединение и попробуйте ещё раз. На оплату мы вас не перенаправили.');
