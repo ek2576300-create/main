@@ -1,22 +1,26 @@
 import {
   BookOpen,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Clock3,
   FileSpreadsheet,
   FileText,
+  Lock,
+  Pause,
   Play,
   Video,
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useAppContext } from '../app/AppContext';
 import { AuthorButton } from '../components/catalog/AuthorButton';
 import { LessonCard } from '../components/catalog/LessonCard';
 import { PurchaseCta } from '../components/catalog/PurchaseCta';
 import { PaymentModal } from '../components/payment/PaymentModal';
 import { trackEvent } from '../utils/analytics';
-import { getPaymentLabel, isCourseUnlocked } from '../utils/payment';
+import { getPaymentLabel, hasCourseLead, isCourseUnlocked, isFreeTeaser } from '../utils/payment';
 
 const METRIC_STYLES = [
   { bg: 'bg-[#edf7ff]', iconBg: 'bg-[#16a7ff]', text: 'text-[#168fff]', icon: Clock3, label: 'Длительность' },
@@ -47,11 +51,93 @@ function PreviewPoster({ course, lesson, onOpen }) {
   );
 }
 
-function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
+function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay, onNext, hasNext, unlocked }) {
   const videoRef = useRef(null);
-  const seekingRef = useRef(false);
+  const draggingRef = useRef(false);
+  // Some mobile browsers defer fetching even `preload="metadata"`, so
+  // `video.duration` can still be NaN when someone drags the seek bar.
+  // Remember the requested position and apply it once metadata arrives.
+  const pendingSeekRef = useRef(null);
+  const blobUrlRef = useRef(null);
+  const rangeFallbackRef = useRef(false);
+  const seekCheckRef = useRef({ timer: null, target: 0, ratio: 0 });
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  // Reset per-lesson playback state when the player switches lessons.
+  useEffect(() => {
+    setPlaying(false);
+    setProgress(0);
+    pendingSeekRef.current = null;
+    rangeFallbackRef.current = false;
+    const seekCheck = seekCheckRef.current;
+    return () => {
+      window.clearTimeout(seekCheck.timer);
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    };
+  }, [lesson.video]);
+
+  // A server that answers video requests with 200 instead of 206 makes the
+  // clip unseekable: the browser silently snaps currentTime back to zero, so
+  // the bar looks broken and the lesson restarts. Downloading the file once
+  // and playing it from a blob URL restores seeking whatever the host does.
+  const loadSeekableCopy = async (ratio) => {
+    const video = videoRef.current;
+    if (!video || !lesson.video) return;
+    const wasPlaying = !video.paused;
+    try {
+      const response = await fetch(lesson.video);
+      if (!response.ok) return;
+      const url = URL.createObjectURL(await response.blob());
+      blobUrlRef.current = url;
+      video.addEventListener(
+        'loadedmetadata',
+        () => {
+          const { duration } = video;
+          if (Number.isFinite(duration) && duration > 0) {
+            video.currentTime = Math.min(ratio * duration, Math.max(duration - 0.25, 0));
+          }
+          if (wasPlaying) video.play().catch(() => {});
+        },
+        { once: true },
+      );
+      video.src = url;
+      video.load();
+    } catch {
+      // Offline or blocked by CORS — keep the streamed source as it was.
+    }
+  };
+
+  const seekTo = (ratio) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const { duration } = video;
+    if (!Number.isFinite(duration) || duration <= 0) {
+      pendingSeekRef.current = ratio;
+      return;
+    }
+    pendingSeekRef.current = null;
+    // Stay clear of the very end, otherwise dragging to the right edge fires
+    // `ended` immediately and the lesson looks like it jumped back to zero.
+    const target = Math.min(ratio * duration, Math.max(duration - 0.25, 0));
+    video.currentTime = target;
+
+    // Verify only the final position of a drag: checking every intermediate
+    // step would mistake "the visitor kept dragging" for "the seek failed".
+    if (rangeFallbackRef.current) return;
+    const check = seekCheckRef.current;
+    check.target = target;
+    check.ratio = ratio;
+    window.clearTimeout(check.timer);
+    check.timer = window.setTimeout(() => {
+      const current = videoRef.current;
+      if (!current || rangeFallbackRef.current || draggingRef.current) return;
+      if (Math.abs(current.currentTime - check.target) < 1.5) return;
+      rangeFallbackRef.current = true;
+      loadSeekableCopy(check.ratio);
+    }, 700);
+  };
 
   const startVideo = () => {
     const video = videoRef.current;
@@ -67,8 +153,11 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
   };
 
   return (
-    <article className="relative aspect-[512/1000] w-full overflow-hidden rounded-[26px] bg-[#1b1b1b] shadow-[0_18px_48px_rgba(0,0,0,.16)]">
+    <article className="group relative aspect-[512/1000] w-full overflow-hidden rounded-[26px] bg-[#1b1b1b] shadow-[0_18px_48px_rgba(0,0,0,.16)]">
       <style>{`
+        .askhow-video-progress {
+          -webkit-touch-callout: none;
+        }
         .askhow-video-progress::-webkit-slider-runnable-track {
           height: 5px;
           border-radius: 9999px;
@@ -77,18 +166,15 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
         .askhow-video-progress::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 14px;
-          height: 14px;
-          margin-top: -4.5px;
+          width: 16px;
+          height: 16px;
+          margin-top: -5.5px;
           border: 0;
           border-radius: 9999px;
           background: #fff;
-          box-shadow: 0 1px 5px rgba(0,0,0,.25);
-          opacity: 0;
+          box-shadow: 0 1px 6px rgba(0,0,0,.35);
         }
-        .askhow-video-progress:focus::-webkit-slider-thumb,
-        .askhow-video-progress:active::-webkit-slider-thumb,
-        .askhow-video-progress:hover::-webkit-slider-thumb { opacity: 1; }
+        .askhow-video-progress:active::-webkit-slider-thumb { transform: scale(1.15); }
         .askhow-video-progress::-moz-range-track {
           height: 5px;
           border-radius: 9999px;
@@ -100,17 +186,13 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
           background: #fff;
         }
         .askhow-video-progress::-moz-range-thumb {
-          width: 14px;
-          height: 14px;
+          width: 16px;
+          height: 16px;
           border: 0;
           border-radius: 9999px;
           background: #fff;
-          box-shadow: 0 1px 5px rgba(0,0,0,.25);
-          opacity: 0;
+          box-shadow: 0 1px 6px rgba(0,0,0,.35);
         }
-        .askhow-video-progress:focus::-moz-range-thumb,
-        .askhow-video-progress:active::-moz-range-thumb,
-        .askhow-video-progress:hover::-moz-range-thumb { opacity: 1; }
       `}</style>
       <video
         ref={videoRef}
@@ -126,14 +208,24 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
           onPlay();
         }}
         onPause={() => setPlaying(false)}
+        onLoadedMetadata={() => {
+          if (pendingSeekRef.current == null) return;
+          seekTo(pendingSeekRef.current);
+        }}
         onTimeUpdate={(event) => {
-          if (seekingRef.current) return;
-          const { currentTime, duration } = event.currentTarget;
-          setProgress(duration ? Math.min(currentTime / duration, 1) : 0);
+          const video = event.currentTarget;
+          // While the visitor drags — or while the element is still settling on
+          // a seek — the bar must keep showing where they put it. Writing the
+          // element's own (stale) time back here is what used to yank the
+          // slider, and with it the playhead, back to the start.
+          if (draggingRef.current || video.seeking) return;
+          const { currentTime, duration } = video;
+          if (!Number.isFinite(duration) || duration <= 0) return;
+          setProgress(Math.min(currentTime / duration, 1));
         }}
         onEnded={() => {
           setPlaying(false);
-          setProgress(0);
+          setProgress(1);
           onEnded();
         }}
       />
@@ -150,26 +242,40 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
           value={Math.round(progress * 1000)}
           onPointerDown={(event) => {
             event.stopPropagation();
-            seekingRef.current = true;
+            draggingRef.current = true;
+            // Keep receiving the move/up events even if the finger slides off
+            // the bar, so the drag never ends half-way in an unknown state.
+            event.currentTarget.setPointerCapture?.(event.pointerId);
           }}
-          onPointerUp={() => { seekingRef.current = false; }}
-          onPointerCancel={() => { seekingRef.current = false; }}
-          onBlur={() => { seekingRef.current = false; }}
+          onPointerUp={() => { draggingRef.current = false; }}
+          onPointerCancel={() => { draggingRef.current = false; }}
           onClick={(event) => event.stopPropagation()}
           onChange={(event) => {
             const nextProgress = Number(event.currentTarget.value) / 1000;
             setProgress(nextProgress);
-            const video = videoRef.current;
-            if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
-            video.currentTime = Math.min(nextProgress * video.duration, Math.max(video.duration - 0.05, 0));
+            seekTo(nextProgress);
           }}
           aria-label="Прогресс просмотра видео"
-          className="askhow-video-progress h-[18px] w-full cursor-pointer appearance-none bg-transparent"
+          className="askhow-video-progress h-[26px] w-full cursor-pointer touch-none select-none appearance-none bg-transparent"
           style={{ '--video-progress': `${progress * 100}%` }}
         />
       </div>
 
-      <span className="pointer-events-none absolute left-[4.2%] top-[2.4%] z-20 rounded-[5px] bg-[#ff3030] px-3 py-1.5 text-[12px] font-medium leading-none text-white sm:text-[13px]">Бесплатно</span>
+      <span className="pointer-events-none absolute left-[4.2%] top-[2.4%] z-20 rounded-[5px] bg-[#22c55e] px-3 py-1.5 text-[12px] font-medium leading-none text-white sm:text-[13px]">Бесплатно</span>
+
+      {unlocked && hasNext && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onNext();
+          }}
+          className="absolute right-[4.2%] top-[2.4%] z-40 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-semibold text-[#181818] shadow-[0_6px_18px_rgba(0,0,0,.25)] backdrop-blur transition hover:bg-white sm:text-[11px]"
+        >
+          Смотреть следующий урок
+          <ChevronRight size={13} />
+        </button>
+      )}
 
       {!playing && (
         <button
@@ -179,6 +285,17 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
           aria-label="Воспроизвести урок"
         >
           <Play size={24} className="ml-1 fill-current" />
+        </button>
+      )}
+
+      {playing && (
+        <button
+          type="button"
+          onClick={toggleVideo}
+          className="absolute left-1/2 top-1/2 z-20 grid h-[58px] w-[58px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/45 bg-black/25 text-white opacity-0 backdrop-blur-[1px] transition duration-200 group-hover:opacity-100 active:scale-95"
+          aria-label="Поставить на паузу"
+        >
+          <Pause size={24} className="fill-current" />
         </button>
       )}
 
@@ -195,6 +312,39 @@ function InlineLessonVideo({ lesson, onPlay, onEnded, guardPlay }) {
           </button>
         </div>
       )}
+    </article>
+  );
+}
+
+// An unlocked free lesson whose video file has not been uploaded yet: show the
+// lesson itself instead of bouncing the visitor back into the lead form.
+function LessonComingSoon({ lesson, onNext, hasNext }) {
+  return (
+    <article className="relative aspect-[512/1000] w-full overflow-hidden rounded-[26px] bg-[#1b1b1b] shadow-[0_18px_48px_rgba(0,0,0,.16)]">
+      <img src={lesson.image || lesson.poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
+      <span className="pointer-events-none absolute inset-0 bg-black/45" />
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+
+      <span className="pointer-events-none absolute left-[4.2%] top-[2.4%] z-20 rounded-[5px] bg-[#22c55e] px-3 py-1.5 text-[12px] font-medium leading-none text-white sm:text-[13px]">Открыт</span>
+
+      {hasNext && (
+        <button
+          type="button"
+          onClick={onNext}
+          className="absolute right-[4.2%] top-[2.4%] z-40 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-semibold text-[#181818] shadow-[0_6px_18px_rgba(0,0,0,.25)] backdrop-blur transition hover:bg-white sm:text-[11px]"
+        >
+          Смотреть следующий урок
+          <ChevronRight size={13} />
+        </button>
+      )}
+
+      <div className="absolute inset-x-[8.4%] bottom-[4.5%] z-20 text-white">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium backdrop-blur">
+          <Clock3 size={13} /> Видео скоро появится
+        </span>
+        <h3 className="mt-4 text-[18px] font-semibold leading-[1.22] tracking-[-.01em] sm:text-[20px]">{lesson.title}</h3>
+        {lesson.subtitle && <p className="mt-3 line-clamp-3 text-[12px] leading-[1.48] text-white/95 sm:text-[13px]">{lesson.subtitle}</p>}
+      </div>
     </article>
   );
 }
@@ -274,29 +424,70 @@ function MaterialPreviewModal({ material, onClose }) {
   );
 }
 
-function MaterialsSection() {
+// Materials are the reward for leaving contact details: until the form is
+// filled the cards are visible but closed, and clicking one opens the form.
+function MaterialsSection({ unlocked, onUnlock }) {
   const [activeMaterial, setActiveMaterial] = useState(null);
   return (
     <section className="mt-12 sm:mt-16">
       <h2 className="text-[31px] font-semibold tracking-[-.035em] sm:text-[38px]">Материалы курса</h2>
+      <p className="mt-3 text-[12px] leading-[1.5] text-[#777]">
+        {unlocked
+          ? 'Материалы открыты — можно смотреть и скачивать.'
+          : 'Заполните короткую форму, и материалы откроются на этой странице.'}
+      </p>
       <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {MATERIAL_TABS.map((tab) => (
           <button
             key={tab.type}
             type="button"
-            onClick={() => setActiveMaterial(tab)}
-            className="motion-card flex items-center gap-3 rounded-[15px] border border-[#e9e9e9] bg-white px-5 py-4 text-left shadow-[0_8px_28px_rgba(0,0,0,.04)] transition hover:border-[#d8d8d8]"
+            onClick={() => (unlocked ? setActiveMaterial(tab) : onUnlock())}
+            className={`motion-card flex items-center gap-3 rounded-[15px] border px-5 py-4 text-left shadow-[0_8px_28px_rgba(0,0,0,.04)] transition ${unlocked ? 'border-[#e9e9e9] bg-white hover:border-[#d8d8d8]' : 'border-[#ececec] bg-[#fafafa] hover:border-[#dcdcdc]'}`}
           >
-            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-[12px] ${tab.color}`}><tab.icon size={20} /></span>
+            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-[12px] ${unlocked ? tab.color : 'bg-[#f0f0f0] text-[#9a9a9a]'}`}>
+              {unlocked ? <tab.icon size={20} /> : <Lock size={18} />}
+            </span>
             <span className="min-w-0">
               <strong className="block text-[13px] font-semibold">{tab.label}</strong>
-              <span className="mt-0.5 block text-[9px] text-[#888]">Открыть материал</span>
+              <span className="mt-0.5 block text-[9px] text-[#888]">
+                {unlocked ? 'Открыть материал' : 'Откроется после формы'}
+              </span>
             </span>
           </button>
         ))}
       </div>
-      <MaterialPreviewModal material={activeMaterial} onClose={() => setActiveMaterial(null)} />
+      <MaterialPreviewModal material={unlocked ? activeMaterial : null} onClose={() => setActiveMaterial(null)} />
     </section>
+  );
+}
+
+function PaymentFailedModal({ open, onClose }) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return createPortal(
+    <div className="modal-backdrop-enter fixed inset-0 z-[100] flex items-end justify-center overflow-y-auto bg-black/55 p-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-8" role="dialog" aria-modal="true" aria-labelledby="payment-failed-title">
+      <button type="button" className="absolute inset-0 h-full w-full cursor-default" onClick={onClose} aria-label="Закрыть" />
+      <section className="modal-panel-enter modal-safe-panel relative z-10 w-full max-w-[440px] rounded-t-[24px] bg-white p-6 text-center shadow-[0_28px_90px_rgba(0,0,0,.28)] min-[390px]:p-7 sm:rounded-[24px]">
+        <button type="button" onClick={onClose} className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-[#f4f4f4] transition hover:bg-[#e9e9e9] min-[390px]:right-4 min-[390px]:top-4" aria-label="Закрыть"><X size={19} /></button>
+        <h2 id="payment-failed-title" className="mt-4 text-[22px] font-semibold leading-[1.2] sm:text-[25px]">Оплата не прошла</h2>
+        <p className="mt-3 text-[11px] leading-[1.5] text-[#666]">Деньги не списаны или платёж был отменён. Попробуйте оплатить ещё раз.</p>
+      </section>
+    </div>,
+    document.body,
   );
 }
 
@@ -330,13 +521,22 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   const [purchaseCtaOpen, setPurchaseCtaOpen] = useState(false);
   const [lessonsExpanded, setLessonsExpanded] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(() => isCourseUnlocked(course.id));
+  const [materialsUnlocked, setMaterialsUnlocked] = useState(
+    () => hasCourseLead(course.id) || isCourseUnlocked(course.id),
+  );
+  const [activeLessonId, setActiveLessonId] = useState(null);
+  const [paymentFailedOpen, setPaymentFailedOpen] = useState(false);
   const programRef = useRef(null);
   const viewedCourseRef = useRef(null);
   const previewStartedRef = useRef(null);
   const isFreeCourse = course.price === 'Бесплатно';
   const lessons = course.lessons || [];
   const previewLesson = lessons.find((lesson) => lesson.featured) || lessons[0] || null;
+  const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) || previewLesson;
+  const activeLessonIndex = activeLesson ? lessons.findIndex((lesson) => lesson.id === activeLesson.id) : -1;
+  const nextLesson = activeLessonIndex >= 0 ? lessons[activeLessonIndex + 1] || null : null;
   const visibleLessons = lessonsExpanded ? lessons : lessons.slice(0, 6);
+  const { setCourseCta } = useAppContext();
 
   useEffect(() => {
     setPaymentOpen(false);
@@ -344,11 +544,25 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     setPurchaseCtaOpen(false);
     setLessonsExpanded(false);
     setLeadCaptured(isCourseUnlocked(course.id));
+    setMaterialsUnlocked(hasCourseLead(course.id) || isCourseUnlocked(course.id));
+    setActiveLessonId(null);
     previewStartedRef.current = null;
     if (viewedCourseRef.current === course.id) return;
     viewedCourseRef.current = course.id;
     trackEvent('course_open', { course_id: course.id, course_title: course.title, course_price: course.price || null });
   }, [course.id, course.price, course.title]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') !== 'failed') return;
+    setPaymentOpen(false);
+    setPaymentGate(null);
+    setPaymentFailedOpen(true);
+    trackEvent('payment_failed_view', { course_id: course.id, course_title: course.title });
+    params.delete('payment');
+    const nextSearch = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+  }, [course.id, course.title]);
 
   const openPayment = (source) => {
     setPurchaseCtaOpen(false);
@@ -376,6 +590,19 @@ export function CoursePage({ course, author, onOpenAuthor }) {
   };
 
   const openFreeAccess = (source) => {
+    if (isFreeCourse && leadCaptured) {
+      setPurchaseCtaOpen(false);
+      setPaymentGate({
+        resubscribe: true,
+        onAccessGranted: () => {
+          setPaymentOpen(false);
+          setPaymentGate(null);
+        },
+      });
+      setPaymentOpen(true);
+      trackEvent('newsletter_form_open', { course_id: course.id, course_title: course.title, source });
+      return;
+    }
     requestVideoAccess(source, () => {});
   };
 
@@ -383,29 +610,58 @@ export function CoursePage({ course, author, onOpenAuthor }) {
     window.requestAnimationFrame(() => programRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
+  const showLessonInPlayer = (lesson) => {
+    setActiveLessonId(lesson.id);
+    if (lesson.url && !lesson.video) window.open(lesson.url, '_blank', 'noopener,noreferrer');
+    else openPreview();
+  };
+
   const openLesson = (lesson) => {
-    if ((isFreeCourse || lesson.free) && (lesson.video || lesson.url)) {
-      requestVideoAccess('lesson_video', () => {
-        if (lesson.url && !lesson.video) window.open(lesson.url, '_blank', 'noopener,noreferrer');
-        else openPreview();
-      });
+    // A free course is free: the lead form is the only gate, and once it has
+    // been filled in every lesson opens straight in the player — including
+    // lessons whose video file is not uploaded yet.
+    if (isFreeCourse || lesson.free) {
+      requestVideoAccess('lesson_video', () => showLessonInPlayer(lesson));
       return;
     }
     openPayment('locked_lesson_video');
     trackEvent('locked_lesson_click', { course_id: course.id, lesson_id: lesson.id });
   };
 
+  const goToNextLesson = () => {
+    if (!nextLesson) return;
+    // The lesson is already unlocked (this button only shows once it is), so
+    // this just switches the player — never the lead/payment form.
+    trackEvent('next_lesson_click', { course_id: course.id, lesson_id: nextLesson.id });
+    showLessonInPlayer(nextLesson);
+  };
+
   const handlePreviewPlay = () => {
-    if (!previewLesson || previewStartedRef.current === previewLesson.id) return;
-    previewStartedRef.current = previewLesson.id;
-    trackEvent('preview_start', { course_id: course.id, lesson_id: previewLesson.id });
+    if (!activeLesson || previewStartedRef.current === activeLesson.id) return;
+    previewStartedRef.current = activeLesson.id;
+    trackEvent('preview_start', { course_id: course.id, lesson_id: activeLesson.id });
   };
 
   const handlePreviewEnded = () => {
-    if (!previewLesson) return;
-    trackEvent('preview_complete', { course_id: course.id, lesson_id: previewLesson.id });
+    if (!activeLesson) return;
+    trackEvent('preview_complete', { course_id: course.id, lesson_id: activeLesson.id });
+    // Someone who already opened the free course does not need a "get full
+    // access" prompt after every lesson.
+    if (isFreeCourse && leadCaptured) return;
     setPurchaseCtaOpen(true);
   };
+
+  // The site footer is rendered once by AppShell for every page, so the
+  // course page publishes its own CTA into shared context instead of the
+  // footer hard-coding a course-agnostic button.
+  useEffect(() => {
+    setCourseCta({
+      label: getPaymentLabel(course, false, leadCaptured),
+      teaser: isFreeTeaser(course, leadCaptured),
+      onClick: () => (isFreeCourse ? openFreeAccess('site_footer') : openPayment('site_footer')),
+    });
+    return () => setCourseCta(null);
+  }, [course.id, course.price, course.title, isFreeCourse, leadCaptured, setCourseCta]);
 
   return (
     <main className="px-3 pb-12 min-[380px]:px-4 sm:px-5 lg:ml-[190px] lg:px-[28px]">
@@ -418,7 +674,17 @@ export function CoursePage({ course, author, onOpenAuthor }) {
             <div className="mt-5"><AuthorButton author={author} onOpenAuthor={onOpenAuthor} compact /></div>
             {course.tags?.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{course.tags.map((tag) => <span key={tag} className="rounded-full bg-[#edf7ff] px-3 py-1.5 text-[9px] font-medium text-[#1683ff]">{tag}</span>)}</div>}
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => (isFreeCourse ? openFreeAccess('course_header') : openPayment('course_header'))} className="pay-button-motion min-h-11 w-full rounded-full bg-[#ffdd00] px-6 text-[11px] font-semibold shadow-[0_8px_22px_rgba(255,221,0,.22)] sm:w-auto sm:min-w-[240px]">{getPaymentLabel(course)}</button>
+              <button
+                type="button"
+                onClick={() => (isFreeCourse ? openFreeAccess('course_header') : openPayment('course_header'))}
+                className={`pay-button-motion min-h-11 w-full rounded-full px-6 text-[11px] font-semibold sm:w-auto sm:min-w-[240px] ${
+                  isFreeTeaser(course, leadCaptured)
+                    ? 'bg-[#22c55e] text-white shadow-[0_8px_22px_rgba(34,197,94,.28)]'
+                    : 'bg-[#ffdd00] shadow-[0_8px_22px_rgba(255,221,0,.22)]'
+                }`}
+              >
+                {getPaymentLabel(course, false, leadCaptured)}
+              </button>
               <Metric index={0} value={course.duration || 'Уточняется'} />
               <Metric index={1} value={lessons.length || '—'} />
             </div>
@@ -429,11 +695,25 @@ export function CoursePage({ course, author, onOpenAuthor }) {
           {lessons.length > 0 && (
             <div className="mt-5 grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(280px,.92fr)_minmax(0,1.45fr)] lg:gap-7">
               <div className="min-w-0">
-                {previewLesson.video ? <InlineLessonVideo lesson={previewLesson} onPlay={handlePreviewPlay} onEnded={handlePreviewEnded} guardPlay={(action) => requestVideoAccess('preview_video', action)} /> : <LessonCard lesson={previewLesson} course={course} variant="player" onOpen={() => openLesson(previewLesson)} unlocked={isFreeCourse && leadCaptured} />}
+                {activeLesson.video ? (
+                  <InlineLessonVideo
+                    lesson={activeLesson}
+                    onPlay={handlePreviewPlay}
+                    onEnded={handlePreviewEnded}
+                    guardPlay={(action) => requestVideoAccess('preview_video', action)}
+                    onNext={goToNextLesson}
+                    hasNext={Boolean(nextLesson)}
+                    unlocked={isFreeCourse && leadCaptured}
+                  />
+                ) : isFreeCourse && leadCaptured ? (
+                  <LessonComingSoon lesson={activeLesson} onNext={goToNextLesson} hasNext={Boolean(nextLesson)} />
+                ) : (
+                  <LessonCard lesson={activeLesson} course={course} variant="player" onOpen={() => openLesson(activeLesson)} unlocked={isFreeCourse && leadCaptured} />
+                )}
               </div>
               <div className="min-w-0">
                 <div className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-6 min-[460px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-                  {visibleLessons.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} course={course} active={lesson.id === previewLesson.id} onOpen={() => openLesson(lesson)} unlocked={isFreeCourse && leadCaptured} />)}
+                  {visibleLessons.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} course={course} active={lesson.id === activeLesson.id} onOpen={() => openLesson(lesson)} unlocked={isFreeCourse && leadCaptured} />)}
                 </div>
                 {lessons.length > 6 && <button type="button" onClick={() => setLessonsExpanded((value) => !value)} className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#f1f1f1] px-5 text-[10px] font-semibold">{lessonsExpanded ? 'Скрыть уроки' : 'Посмотреть все уроки'}{lessonsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>}
               </div>
@@ -447,16 +727,22 @@ export function CoursePage({ course, author, onOpenAuthor }) {
         </section>
 
         <UpdatesSection updates={course.updates} />
-        <MaterialsSection />
-        <PurchaseCta open={purchaseCtaOpen} course={course} onClose={() => setPurchaseCtaOpen(false)} onBuy={() => (isFreeCourse ? openFreeAccess('floating_cta') : openPayment('floating_cta'))} />
+        <MaterialsSection
+          unlocked={materialsUnlocked}
+          onUnlock={() => requestVideoAccess('course_materials', () => {})}
+        />
+        <PurchaseCta open={purchaseCtaOpen} course={course} unlocked={isFreeCourse && leadCaptured} onClose={() => setPurchaseCtaOpen(false)} onBuy={() => (isFreeCourse ? openFreeAccess('floating_cta') : openPayment('floating_cta'))} />
         <PaymentModal
           open={paymentOpen}
           course={course}
-          source="course_page"
+          source={paymentGate?.resubscribe ? 'newsletter_signup' : 'course_page'}
           onClose={() => { setPaymentOpen(false); setPaymentGate(null); }}
+          onPayment={() => setMaterialsUnlocked(true)}
           forceFree={Boolean(paymentGate)}
           onAccessGranted={paymentGate?.onAccessGranted}
+          allowResubmit={Boolean(paymentGate?.resubscribe)}
         />
+        <PaymentFailedModal open={paymentFailedOpen} onClose={() => setPaymentFailedOpen(false)} />
       </div>
     </main>
   );

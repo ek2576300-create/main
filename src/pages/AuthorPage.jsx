@@ -1,32 +1,39 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CourseCatalogCard } from '../components/catalog/CourseCatalogCard';
 import { HomeSectionHeader } from '../components/home/HomeSectionHeader';
 import { PaymentModal } from '../components/payment/PaymentModal';
+import { authorArticles, usePublishedArticles } from '../features/content/published-content';
 
 function ArticleCards({ items }) {
   return (
     <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3">
-      {items.map((item) => (
-        <a
-          key={item.id}
-          href={item.url || '#'}
-          target={item.url ? '_blank' : undefined}
-          rel={item.url ? 'noopener noreferrer' : undefined}
-          className="motion-card overflow-hidden rounded-[16px] border border-[#e8e8e8] bg-white shadow-[0_8px_28px_rgba(0,0,0,.04)]"
-        >
-          {item.image && (
-            <img src={item.image} alt={item.title || ''} className="aspect-video w-full object-cover" />
-          )}
-          <div className="p-4">
-            <h3 className="text-[14px] font-semibold leading-[1.3]">{item.title}</h3>
-            {item.description && (
-              <p className="mt-2 line-clamp-3 text-[10px] leading-[1.5] text-[#666]">
-                {item.description}
-              </p>
+      {items.map((item) => {
+        // An article written in the admin panel lives on the site itself; only
+        // one that points somewhere else opens in a new tab.
+        const external = Boolean(item.url);
+        const href = item.url || `/blogs/${item.id}`;
+        const summary = item.description || item.excerpt;
+
+        return (
+          <a
+            key={item.id}
+            href={href}
+            target={external ? '_blank' : undefined}
+            rel={external ? 'noopener noreferrer' : undefined}
+            className="motion-card overflow-hidden rounded-[16px] border border-[#e8e8e8] bg-white shadow-[0_8px_28px_rgba(0,0,0,.04)]"
+          >
+            {item.image && (
+              <img src={item.image} alt={item.title || ''} className="aspect-video w-full object-cover" />
             )}
-          </div>
-        </a>
-      ))}
+            <div className="p-4">
+              <h3 className="text-[14px] font-semibold leading-[1.3]">{item.title}</h3>
+              {summary && (
+                <p className="mt-2 line-clamp-3 text-[10px] leading-[1.5] text-[#666]">{summary}</p>
+              )}
+            </div>
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -34,7 +41,13 @@ function ArticleCards({ items }) {
 export function AuthorPage({ author, courses, onOpenCourse }) {
   const [expanded, setExpanded] = useState(false);
   const [paymentCourse, setPaymentCourse] = useState(null);
-  const articles = author.content?.articles || [];
+  const { articles: published } = usePublishedArticles();
+  // Articles bundled with the build plus whatever the admin panel has
+  // published for this author since the last deploy.
+  const articles = useMemo(
+    () => [...(author.content?.articles || []), ...authorArticles(published, author.id)],
+    [author.content?.articles, author.id, published],
+  );
 
   return (
     <main className="px-3 pb-12 min-[380px]:px-4 sm:px-5 lg:ml-[190px] lg:px-[28px]">

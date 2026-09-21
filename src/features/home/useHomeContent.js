@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { subscriptionCourses } from '../../data/subscriptions';
+import { mergeBlogs, usePublishedArticles } from '../content/published-content';
 import { homeBlogs, homeCourses } from './home.data';
 
 function containsQuery(values, query) {
@@ -8,13 +9,15 @@ function containsQuery(values, query) {
 
 export function useHomeContent(query) {
   const normalizedQuery = query.trim().toLowerCase();
+  const { articles } = usePublishedArticles();
+  const blogs = useMemo(() => mergeBlogs(homeBlogs, articles), [articles]);
 
   return useMemo(() => {
     if (!normalizedQuery) {
       return {
         courses: homeCourses,
         subscriptionCourses,
-        blogs: homeBlogs,
+        blogs,
       };
     }
 
@@ -34,9 +37,9 @@ export function useHomeContent(query) {
           normalizedQuery,
         ),
       ),
-      blogs: homeBlogs.filter((item) =>
+      blogs: blogs.filter((item) =>
         containsQuery([item.title, item.category, item.tags, item.excerpt], normalizedQuery),
       ),
     };
-  }, [normalizedQuery]);
+  }, [blogs, normalizedQuery]);
 }

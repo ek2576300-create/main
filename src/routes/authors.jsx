@@ -14,7 +14,7 @@ export const Route = createFileRoute('/authors')({
       meta: [
         { title: 'Каталог авторов и экспертов — AskHow' },
         { name: 'description', content: 'Каталог авторов AskHow: эксперты, преподаватели и создатели практических онлайн-курсов.' },
-        { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1' },
+        { name: 'robots', content: 'noindex, nofollow' },
         { property: 'og:type', content: 'website' },
         { property: 'og:title', content: 'Каталог авторов и экспертов — AskHow' },
         { property: 'og:url', content: AUTHORS_URL },

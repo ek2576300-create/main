@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { HomeBlogCard } from "../components/home/HomeBlogCard";
 import { HomeCourseCard } from "../components/home/HomeCourseCard";
 import { HomeHero } from "../components/home/HomeHero";
 import { HomeSectionHeader } from "../components/home/HomeSectionHeader";
@@ -9,7 +10,7 @@ import { Reveal } from "../components/motion/Reveal";
 import { PaymentModal } from "../components/payment/PaymentModal";
 import { courses } from "../data/catalog";
 
-export function HomePage({ query, onOpenCourse, onOpenCatalog, onOpenReels }) {
+export function HomePage({ query, onOpenCourse, onOpenCatalog, onOpenBlog, onOpenBlogs, onOpenReels }) {
   const coursesSliderRef = useRef(null);
   const subscriptionSliderRef = useRef(null);
   const [paymentCourseId, setPaymentCourseId] = useState(null);
@@ -20,6 +21,7 @@ export function HomePage({ query, onOpenCourse, onOpenCatalog, onOpenReels }) {
   const {
     courses: visibleCourses,
     subscriptionCourses: visibleSubscriptionCourses,
+    blogs: visibleBlogs,
   } = useHomeContent(query);
 
   return (
@@ -91,6 +93,17 @@ export function HomePage({ query, onOpenCourse, onOpenCatalog, onOpenReels }) {
         <Reveal as="section" className="mt-4 sm:mt-5" delay={95}>
           <SubscriptionPromoBanner />
         </Reveal>
+
+        {visibleBlogs.length > 0 && (
+          <Reveal as="section" className="mt-9 sm:mt-11" delay={100}>
+            <HomeSectionHeader title="Полезные статьи" onAll={onOpenBlogs} />
+            <div className="grid grid-cols-1 gap-5 min-[520px]:grid-cols-2 lg:grid-cols-3">
+              {visibleBlogs.slice(0, 6).map((item) => (
+                <HomeBlogCard key={item.id} item={item} onOpenBlog={onOpenBlog} />
+              ))}
+            </div>
+          </Reveal>
+        )}
         <PaymentModal
           open={Boolean(paymentCourse)}
           course={paymentCourse}

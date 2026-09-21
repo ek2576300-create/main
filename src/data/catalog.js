@@ -14,8 +14,7 @@ const COURSE_PREVIEW_VIDEOS = Object.freeze({
   'voice-resonators': '/videos/previews/voice-resonators.mp4',
   'easy-finance-management': '/videos/previews/easy-finance-management.mp4',
   'word-of-mouth-promotion': '/videos/previews/word-of-mouth-promotion.mp4',
-  // TODO: temporary stand-in — replace with the real preview video for this course.
-  'business-hypotheses-intro': '/videos/tax.mp4',
+  'business-hypotheses-intro': '/videos/previews/business-hypotheses-intro.mp4',
 });
 
 // MONETA.Assistant принимает платёж POST-формой.
@@ -25,37 +24,37 @@ const COURSE_PAYMENTS = Object.freeze({
   'brand-publicity-media-reputation': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 1,
-    amount: '3000.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'strategic-storytelling-interviews': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 2,
-    amount: '2000.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'tax-system-selection': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 3,
-    amount: '1490.00',
+    amount: '1',
     currency: 'RUB',
   },
   'selling-resume': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 4,
-    amount: '990.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'effective-self-presentation': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 5,
-    amount: '2900.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'buyer-states-sales': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 6,
-    amount: '490.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'brand-publicity-media-reputation-1-ruble': {
@@ -67,25 +66,25 @@ const COURSE_PAYMENTS = Object.freeze({
   'business-hypotheses-intro': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 72346,
-    amount: '2500.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'breathing-and-voice': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 72347,
-    amount: '990.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'voice-resonators': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 72348,
-    amount: '999.00',
+    amount: '1.00',
     currency: 'RUB',
   },
   'easy-finance-management': {
     merchantId: MONETA_MERCHANT_ID,
     itemId: 72349,
-    amount: '2900.00',
+    amount: '1.00',
     currency: 'RUB',
   },
 });
@@ -256,20 +255,26 @@ function createStoredLessons({
   extension = 'jpg',
   lessonMeta = [],
   images = [],
+  videos = [],
 }) {
-  return Array.from({ length: count }, (_, index) => ({
-    id: `${courseId}-lesson-${index + 1}`,
-    title: lessonMeta[index]?.[0] || `Урок ${index + 1}`,
-    subtitle,
-    duration: lessonMeta[index]?.[1] || 'Уточняется',
-    image: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
-    poster: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
-    video: index === 0 ? COURSE_PREVIEW_VIDEOS[courseId] || null : null,
-    free: index === 0 && Boolean(COURSE_PREVIEW_VIDEOS[courseId]),
-    locked: index !== 0 || !COURSE_PREVIEW_VIDEOS[courseId],
-    featured: index === 0,
-    tags,
-  }));
+  return Array.from({ length: count }, (_, index) => {
+    // A course can ship a file per lesson; otherwise only the first lesson
+    // carries the course preview and the rest stay locked.
+    const video = videos[index] || (index === 0 ? COURSE_PREVIEW_VIDEOS[courseId] || null : null);
+    return {
+      id: `${courseId}-lesson-${index + 1}`,
+      title: lessonMeta[index]?.[0] || `Урок ${index + 1}`,
+      subtitle,
+      duration: lessonMeta[index]?.[1] || 'Уточняется',
+      image: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
+      poster: images[index] || `/images/authors/${folder}/lessons/${index + 1}.${extension}`,
+      video,
+      free: index === 0 && Boolean(video),
+      locked: index !== 0 || !video,
+      featured: index === 0,
+      tags,
+    };
+  });
 }
 
 const pavelSemenovLessons = createStoredLessons({
@@ -304,10 +309,21 @@ const igorVeretennikovLessons = createStoredLessons({
     ['Модуль 6 Карьера', '21:05'],
   ],
 });
+// The only course that currently ships a video for every lesson, not just the
+// preview one, so each entry maps to its own uploaded file.
+const WORD_OF_MOUTH_LESSON_VIDEOS = [
+  COURSE_PREVIEW_VIDEOS['word-of-mouth-promotion'],
+  '/videos/previews/2.mp4',
+  '/videos/previews/3.mp4',
+  '/videos/previews/4.mp4',
+  '/videos/previews/5.mp4',
+];
+
 const daryaFilimonovaLessons = createStoredLessons({
   courseId: 'word-of-mouth-promotion',
   folder: 'darya-filimonova',
   count: 5,
+  videos: WORD_OF_MOUTH_LESSON_VIDEOS,
   subtitle: 'Урок курса о продвижении с помощью сарафанного радио.',
   tags: ['#маркетинг', '#продвижение'],
   images: [
@@ -419,8 +435,8 @@ const authorsBase = [
     id: 'konstantin-kharsky',
     name: 'Константин Харский',
     role: 'Эксперт по продажам и покупательскому поведению',
-    avatar: '/images/authors/konstantin-kharsky/author.png',
-    cover: '/images/authors/konstantin-kharsky/author.png',
+    avatar: '/images/authors/konstantin-kharsky/author.jpg',
+    cover: '/images/authors/konstantin-kharsky/author.jpg',
     description:
       'Автор курса «Управление покупательскими состояниями. Продажи по-новому» о новом подходе к продажам и состояниях покупателя.',
     tags: ['#продажи', '#покупатель', '#управление'],
@@ -509,7 +525,7 @@ function createCourse({
       description: shortDescription(description),
       canonical,
       image: cover.startsWith('http') ? cover : `${SITE_URL}${cover}`,
-      robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+      robots: 'noindex, nofollow',
       keywords: [
         ...new Set([
           title,
@@ -543,7 +559,7 @@ export const courses = [
     ],
     cover: '/images/authors/igor-malinin/media/cover.jpg',
     duration: '45 мин 41 сек',
-    price: '3 000 ₽',
+    price: '1 ₽',
     lessons: igorMalininLessons,
     tags: ['#PR', '#СМИ', '#SERM'],
   }),
@@ -584,7 +600,7 @@ export const courses = [
     ],
     cover: '/images/authors/pavel-semenov/media/cover.jpg',
     duration: '36 мин 58 сек',
-    price: '2 500 ₽',
+    price: '1 ₽',
     lessons: pavelSemenovLessons,
     tags: ['#гипотезы', '#бизнес', '#метрики'],
   }),
@@ -605,7 +621,7 @@ export const courses = [
     ],
     cover: '/images/authors/artem-mushin/media/cover.jpg',
     duration: '1 ч 39 мин 30 сек',
-    price: '2 000 ₽',
+    price: '1 ₽',
     lessons: artemMushinLessons,
     tags: ['#сторителлинг', '#собеседование', '#интервью'],
   }),
@@ -626,7 +642,7 @@ export const courses = [
     ],
     cover: '/images/authors/yulia-volkova/tax-system-selection.jpg',
     duration: '1 ч 26 мин 37 сек',
-    price: '1 490 ₽',
+    price: '1 ₽',
     lessons: yuliaVolkovaLessons,
     tags: ['#налоги', '#отчётность', '#предпринимательство'],
   }),
@@ -647,7 +663,7 @@ export const courses = [
     ],
     cover: '/images/authors/alexandra-nikitina/selling-resume.jpg',
     duration: '1 ч 26 мин 46 сек',
-    price: '990 ₽',
+    price: '1 ₽',
     lessons: resumeLessons,
     tags: ['#карьера', '#резюме', '#поискработы'],
   }),
@@ -668,7 +684,7 @@ export const courses = [
     ],
     cover: '/images/authors/konstantin-kharsky/buyer-states-sales-hero.jpg',
     duration: '32 мин 15 сек',
-    price: '490 ₽',
+    price: '1 ₽',
     lessons: konstantinKharskyLessons,
     tags: ['#продажи', '#покупатель', '#переговоры'],
   }),
@@ -689,7 +705,7 @@ export const courses = [
     ],
     cover: '/images/authors/alexey-markov/effective-self-presentation.jpg',
     duration: '45 мин 28 сек',
-    price: '2 900 ₽',
+    price: '1 ₽',
     lessons: alexeyMarkovLessons,
     tags: ['#самопрезентация', '#выступления', '#личныйбренд'],
   }),
@@ -710,7 +726,7 @@ export const courses = [
     ],
     cover: '/images/authors/alexey-markov/breathing-lessons/1.jfif',
     duration: '11 мин 35 сек',
-    price: '990 ₽',
+    price: '1 ₽',
     lessons: breathingLessons,
     tags: ['#дыхание', '#голос', '#выступления'],
   }),
@@ -731,7 +747,7 @@ export const courses = [
     ],
     cover: '/images/authors/alexey-markov/voice-resonators-hero.jfif',
     duration: '12 мин 7 сек',
-    price: '999 ₽',
+    price: '1 ₽',
     lessons: resonatorLessons,
     tags: ['#голос', '#резонаторы', '#актёрскиетехники'],
   }),
@@ -752,7 +768,7 @@ export const courses = [
     ],
     cover: '/images/authors/igor-veretennikov/media/cover.jpg',
     duration: '2 ч 20 мин 48 сек',
-    price: '2 900 ₽',
+    price: '1 ₽',
     lessons: igorVeretennikovLessons,
     tags: ['#финансы', '#отчётность', '#управление'],
   }),
@@ -793,7 +809,7 @@ export const authors = authorsBase.map((author) => {
       description: shortDescription(`${author.description} Курсы автора на платформе AskHow.`),
       canonical,
       image,
-      robots: 'index, follow, max-image-preview:large, max-snippet:-1',
+      robots: 'noindex, nofollow',
       keywords: [
         ...new Set([
           author.name,

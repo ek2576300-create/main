@@ -1,1 +1,0 @@
-var e=`https://app.askhow.ru`;export{e as t};

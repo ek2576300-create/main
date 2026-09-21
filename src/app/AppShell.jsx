@@ -4,6 +4,7 @@ import { Sidebar } from '../components/layout/Sidebar';
 import { Topbar } from '../components/layout/Topbar';
 import { SiteFooter } from '../components/layout/SiteFooter';
 import { AppContext } from './AppContext';
+import { flushPendingLeads } from '../utils/payment';
 
 function getActiveSection(pathname) {
   if (pathname.startsWith('/catalog/author/')) return 'authors';
@@ -18,9 +19,10 @@ export function AppShell({ children }) {
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [courseCta, setCourseCta] = useState(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const activeSection = getActiveSection(pathname);
-  const contextValue = useMemo(() => ({ query, setQuery }), [query]);
+  const contextValue = useMemo(() => ({ query, setQuery, courseCta, setCourseCta }), [query, courseCta]);
 
   useEffect(() => {
     if (!menuOpen && !mobileSearchOpen) return undefined;
@@ -30,6 +32,10 @@ export function AppShell({ children }) {
       document.body.style.overflow = previousOverflow;
     };
   }, [menuOpen, mobileSearchOpen]);
+
+  useEffect(() => {
+    flushPendingLeads();
+  }, []);
 
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 1024px)');

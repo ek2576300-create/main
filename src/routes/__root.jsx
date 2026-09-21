@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: DEFAULT_TITLE },
       { name: 'description', content: DEFAULT_DESCRIPTION },
-      { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1' },
+      { name: 'robots', content: 'noindex, nofollow' },
       { name: 'theme-color', content: '#ffdc00' },
       { name: 'color-scheme', content: 'light' },
       { name: 'format-detection', content: 'telephone=no' },

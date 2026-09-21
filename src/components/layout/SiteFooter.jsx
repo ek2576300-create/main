@@ -1,4 +1,8 @@
+import { useAppContext } from '../../app/AppContext';
 import { CookieConsent } from './CookieConsent';
+
+const TELEGRAM_URL = 'https://t.me/+J1XU4RVIVQM1NjBi';
+const MAX_URL = 'https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc';
 
 const BANK_SERVICES = [
   { label: 'Альфа-Клик', src: '/images/payments/alfa-bank.webp' },
@@ -26,6 +30,8 @@ function CardBadges() {
 }
 
 export function SiteFooter() {
+  const { courseCta } = useAppContext();
+
   return (
     <footer className="footer-motion border-t border-[#f0f0f0] bg-white px-3 pb-8 pt-9 min-[380px]:px-4 sm:px-5 sm:pt-10 lg:ml-[190px] lg:px-[28px]">
       <div className="mx-auto max-w-[1050px]">
@@ -78,27 +84,63 @@ export function SiteFooter() {
               420111, Республика Татарстан,<br />г. Казань, ул. Университетская, д. 14
             </p>
           </div>
-          <div>
-            <a href="mailto:info@askhow.ru" className="text-[19px] font-semibold">info@askhow.ru</a>
-            <p className="mt-3 text-[10px]">+7(929)734-55-00</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              {['tg', 'wa', 'vk'].map((item) => (
-                <a href="#contacts" key={item} className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[9px]">{item}</a>
-              ))}
-              <a
-                href="https://max.ru/join/Ylp_WbRcr8wnnJBmtBFfB6FpT9b_rh0VIV2o9byrtbc"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="grid h-10 min-w-10 place-items-center rounded-full bg-[#f8f9fa] px-3 text-[9px] font-semibold"
-                aria-label="Открыть AskHow в MAX"
-              >
-                MAX
-              </a>
-            </div>
-            <a href="#contacts" className="mt-8 block text-[9px]">Контакты</a>
-          </div>
+        <div>
+  <a
+    href="#contacts"
+    className="mt-10 block text-[9px]"
+  >
+    Контакты
+  </a>
+  <a
+    href="mailto:info@askhow.ru"
+    className="text-[19px] font-semibold"
+  >
+    info@askhow.ru
+  </a>
+
+  <p className="mt-3 text-[10px]">+7(929)734-55-00</p>
+
+  <div className="mt-6 flex flex-wrap gap-3">
+    <a
+      href={TELEGRAM_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] text-[#181818] transition hover:bg-[#f0f0f0]"
+      aria-label="Telegram"
+    >
+      <img
+        src="/tg.svg"
+        alt="Telegram"
+        className="h-5 w-5 object-contain"
+      />
+    </a>
+
+    <a
+      href={MAX_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="grid h-10 w-10 place-items-center rounded-full bg-[#f8f9fa] transition hover:bg-[#f0f0f0]"
+      aria-label="Открыть AskHow в MAX"
+    >
+      <img
+        src="/max.svg"
+        alt="MAX"
+        className="h-5 w-5 object-contain"
+      />
+    </a>
+  </div>
+
+</div>
           <div className="flex flex-col items-start sm:col-span-2 lg:col-span-1 lg:items-end">
-            <button type="button" className="h-11 w-full min-[390px]:w-auto min-[390px]:min-w-[190px] rounded-full bg-[#ffdc00] px-7 text-[10px] font-medium">Оставить заявку</button>
+            <button
+              type="button"
+              onClick={courseCta ? courseCta.onClick : undefined}
+              className={`pay-button-motion h-11 w-full min-[390px]:w-auto min-[390px]:min-w-[190px] rounded-full px-7 text-[10px] font-medium ${
+                courseCta?.teaser ? 'bg-[#22c55e] text-white' : 'bg-[#ffdc00]'
+              }`}
+            >
+              {courseCta ? courseCta.label : 'Оставить заявку'}
+            </button>
             <div className="mt-8 flex w-full flex-wrap items-start justify-between gap-6 lg:justify-end">
               <div className="max-w-[190px] text-left">
                 <p className="text-[8px] leading-[1.5] text-[#999]">
@@ -119,7 +161,11 @@ export function SiteFooter() {
               </div>
               <div className="text-left lg:text-right">
                 <p className="text-[8px]">Powered by</p>
-                <div className="mt-1 text-[18px] font-semibold text-[#d9b33d]">NAAN</div>
+                <img
+  src="/nan.webp"
+  alt="NAAN"
+  className="mt-1 h-[48px] w-auto object-contain"
+/>
               </div>
             </div>
             <div className="mt-auto flex max-w-[340px] flex-wrap gap-x-6 gap-y-3 pt-9 text-[8px] lg:justify-end lg:text-right">

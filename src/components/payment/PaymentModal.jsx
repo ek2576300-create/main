@@ -6,12 +6,13 @@ import { savePaymentLead, submitMonetaPayment } from '../../utils/payment';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function PaymentModal({ open, course, source = 'course_page', onClose, onPayment, forceFree = false, onAccessGranted }) {
+export function PaymentModal({ open, course, source = 'course_page', onClose, onPayment, forceFree = false, onAccessGranted, allowResubmit = false }) {
   const [form, setForm] = useState({ name: '', email: '', accepted: false });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const closeButtonRef = useRef(null);
+  const redirectingRef = useRef(false);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -32,6 +33,34 @@ export function PaymentModal({ open, course, source = 'course_page', onClose, on
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [course?.id, course?.title, onClose, open, source]);
+
+  // Paying navigates the whole tab away to MONETA. Coming back with the
+  // browser Back button restores this page from the bfcache exactly as it
+  // was left: a spinning "Сохраняем заявку…" button that can never resolve,
+  // with the close button and the backdrop disabled — a dead end. Re-arm the
+  // form as soon as the page is shown again.
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const rearm = () => {
+      if (!redirectingRef.current) return;
+      redirectingRef.current = false;
+      setSubmitting(false);
+    };
+    const handlePageShow = (event) => {
+      if (event.persisted) rearm();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') rearm();
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [open]);
 
   if (!open || !course) return null;
 
@@ -65,7 +94,7 @@ export function PaymentModal({ open, course, source = 'course_page', onClose, on
     setSubmitting(true);
     setSubmitError('');
     try {
-      await savePaymentLead({ course, name: form.name, email: form.email, source });
+      await savePaymentLead({ course, name: form.name, email: form.email, source, allowResubmit });
       trackEvent('payment_form_success', { course_id: course.id, course_title: course.title, source });
       onPayment?.();
       if (isFree) {
@@ -80,8 +109,10 @@ export function PaymentModal({ open, course, source = 'course_page', onClose, on
         return;
       }
       trackEvent('payment_redirect', { course_id: course.id, course_title: course.title, course_price: course.price || null, source });
-      if (!submitMonetaPayment(course, { email: form.email })) throw new Error('Payment configuration is missing');
+      redirectingRef.current = true;
+      if (!submitMonetaPayment(course, { email: form.email, name: form.name })) throw new Error('Payment configuration is missing');
     } catch {
+      redirectingRef.current = false;
       setSubmitError('Не удалось сохранить заявку. Проверьте соединение и попробуйте ещё раз. На оплату мы вас не перенаправили.');
       setSubmitting(false);
     }

@@ -33,7 +33,7 @@ export function LessonCard({ lesson, variant = 'card', active = false, onOpen, u
           }`}
         />
         {isFree && (
-          <span className="absolute left-2.5 top-2.5 rounded-full bg-[#ffdc00] px-2.5 py-1 text-[8px] font-semibold text-[#181818] shadow-sm sm:left-3 sm:top-3">
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-[#22c55e] px-2.5 py-1 text-[8px] font-semibold text-white shadow-sm sm:left-3 sm:top-3">
             Бесплатный урок
           </span>
         )}
